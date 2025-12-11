@@ -1,0 +1,14 @@
+[Unit]
+Description=i33ym Blog
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/i33ym
+ExecStart=/root/i33ym/venv/bin/gunicorn i33ym.wsgi:application --bind 127.0.0.1:8001 --workers 3
+Restart=always
+RestartSec=3
+Environment="DJANGO_SETTINGS_MODULE=i33ym.settings"
+
+[Install]
+WantedBy=multi-user.target

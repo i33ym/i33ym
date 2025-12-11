@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Signup — i33ym{% endblock %}
+
+{% block extra_css %}
+.signup-page {
+    max-width: 400px;
+    margin: 60px auto;
+    text-align: center;
+}
+
+.signup-page h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.signup-page p {
+    color: #555;
+    margin-bottom: 30px;
+}
+
+.signup-form input[type="email"] {
+    width: 100%;
+    padding: 12px 15px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.signup-form button {
+    width: 100%;
+    padding: 12px 24px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: #2c2c2c;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.signup-form button:hover {
+    background: #444;
+}
+{% endblock %}
+
+{% block content %}
+<div class="signup-page">
+    <h1>Complete signup</h1>
+    <p>One more step to finish creating your account.</p>
+
+    <form class="signup-form" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Continue</button>
+    </form>
+</div>
+{% endblock %}

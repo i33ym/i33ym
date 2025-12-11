@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Essays — i33ym{% endblock %}
+
+{% block extra_css %}
+.article-list {
+    list-style: none;
+}
+
+.article-item {
+    margin-bottom: 40px;
+}
+
+.article-item h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.article-item h2 a {
+    text-decoration: none;
+}
+
+.article-item h2 a:hover {
+    text-decoration: underline;
+}
+
+.article-meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.article-excerpt {
+    color: #555;
+}
+
+.tag {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #666;
+    background: #eee;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-decoration: none;
+    margin-right: 4px;
+}
+
+.tag:hover {
+    background: #e0e0e0;
+}
+{% endblock %}
+
+{% block content %}
+<ul class="article-list">
+    {% for article in articles %}
+    <li class="article-item">
+        <h2><a href="{% url 'articles:detail' article.slug %}">{{ article.title }}</a></h2>
+        <div class="article-meta">
+            {{ article.published_at|date:"F Y" }}
+            {% for tag in article.tags.all %}
+                <a href="{% url 'articles:by_tag' tag.slug %}" class="tag">{{ tag.name }}</a>
+            {% endfor %}
+        </div>
+        {% if article.excerpt %}
+        <p class="article-excerpt">{{ article.excerpt }}</p>
+        {% endif %}
+    </li>
+    {% empty %}
+    <p>No essays yet.</p>
+    {% endfor %}
+</ul>
+{% endblock %}

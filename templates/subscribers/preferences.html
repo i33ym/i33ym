@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Preferences — i33ym{% endblock %}
+
+{% block extra_css %}
+.preferences-page h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.preferences-page > p {
+    color: #555;
+    margin-bottom: 30px;
+}
+
+.tag-list {
+    list-style: none;
+    margin-bottom: 30px;
+}
+
+.tag-list li {
+    margin-bottom: 12px;
+}
+
+.tag-list label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.tag-list input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.save-btn {
+    padding: 12px 24px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: #2c2c2c;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.save-btn:hover {
+    background: #444;
+}
+
+.unsubscribe-link {
+    display: inline-block;
+    margin-top: 40px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #888;
+}
+
+.messages {
+    list-style: none;
+    margin-bottom: 20px;
+}
+
+.messages li {
+    padding: 12px 15px;
+    border-radius: 5px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.messages .success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+{% endblock %}
+
+{% block content %}
+<div class="preferences-page">
+    <h1>Your preferences</h1>
+    <p>Choose which topics you'd like to receive updates about.</p>
+
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <ul class="tag-list">
+            {% for tag in tags %}
+            <li>
+                <label>
+                    <input type="checkbox" name="tags" value="{{ tag.id }}"
+                        {% if tag in subscriber.tags.all %}checked{% endif %}>
+                    {{ tag.name }}
+                </label>
+            </li>
+            {% empty %}
+            <p>No topics available yet.</p>
+            {% endfor %}
+        </ul>
+        <button type="submit" class="save-btn">Save preferences</button>
+    </form>
+
+    <a href="{% url 'subscribers:unsubscribe' subscriber.token %}" class="unsubscribe-link">Unsubscribe from all</a>
+</div>
+{% endblock %}

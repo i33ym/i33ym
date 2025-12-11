@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Subscribe — i33ym{% endblock %}
+
+{% block extra_css %}
+.subscribe-page h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.subscribe-page p {
+    color: #555;
+    margin-bottom: 30px;
+}
+
+.subscribe-form {
+    display: flex;
+    gap: 10px;
+}
+
+.subscribe-form input[type="email"] {
+    flex: 1;
+    padding: 12px 15px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.subscribe-form input[type="email"]:focus {
+    outline: none;
+    border-color: #888;
+}
+
+.subscribe-form button {
+    padding: 12px 24px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: #2c2c2c;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.subscribe-form button:hover {
+    background: #444;
+}
+
+.messages {
+    list-style: none;
+    margin-bottom: 20px;
+}
+
+.messages li {
+    padding: 12px 15px;
+    border-radius: 5px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.messages .success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.messages .info {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+{% endblock %}
+
+{% block content %}
+<div class="subscribe-page">
+    <h1>Subscribe to my newsletter</h1>
+    <p>Get notified when I publish new essays. Choose the topics you care about.</p>
+
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form class="subscribe-form" method="post">
+        {% csrf_token %}
+        {{ form.email }}
+        <button type="submit">Subscribe</button>
+    </form>
+</div>
+{% endblock %}

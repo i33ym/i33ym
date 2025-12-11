@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} — i33ym{% endblock %}
+
+{% block extra_css %}
+.article-header {
+    margin-bottom: 40px;
+}
+
+.article-header h1 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 12px;
+}
+
+.article-meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #888;
+}
+
+.tag {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #666;
+    background: #eee;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-decoration: none;
+    margin-left: 4px;
+}
+
+.tag:hover {
+    background: #e0e0e0;
+}
+
+.article-content {
+    margin-bottom: 40px;
+}
+
+.article-content p {
+    margin-bottom: 1.5em;
+}
+
+.article-content h2 {
+    font-size: 24px;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+}
+
+.article-content h3 {
+    font-size: 20px;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.article-content blockquote {
+    border-left: 3px solid #ddd;
+    padding-left: 20px;
+    margin: 1.5em 0;
+    color: #555;
+    font-style: italic;
+}
+
+.article-content code {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 15px;
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.article-content pre {
+    background: #2c2c2c;
+    color: #f0f0f0;
+    padding: 20px;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 1.5em 0;
+}
+
+.article-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.reactions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 60px;
+    padding: 15px 0;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    font-family: 'Inter', sans-serif;
+}
+
+.reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #888;
+}
+
+.reaction-btn:hover {
+    color: #2c2c2c;
+}
+
+.reaction-btn.active {
+    color: #2c2c2c;
+    font-weight: 500;
+}
+
+.anonymous-toggle {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.comments-section {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.comments-section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 30px;
+}
+
+.comment {
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #eee;
+}
+
+.comment:last-child {
+    border-bottom: none;
+}
+
+.comment-meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.comment-meta strong {
+    color: #2c2c2c;
+}
+
+.comment-content {
+    font-size: 16px;
+}
+
+.comment-form {
+    margin-top: 40px;
+}
+
+.comment-form textarea {
+    width: 100%;
+    padding: 15px;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    resize: vertical;
+}
+
+.comment-form textarea:focus {
+    outline: none;
+    border-color: #888;
+}
+
+.comment-form button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: #2c2c2c;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.comment-form button:hover {
+    background: #444;
+}
+
+.login-prompt {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #666;
+}
+
+.login-prompt a {
+    color: #2c2c2c;
+}
+
+.back-link {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    display: inline-block;
+    margin-top: 40px;
+}
+{% endblock %}
+
+{% block content %}
+<article>
+    <header class="article-header">
+        <h1>{{ article.title }}</h1>
+        <div class="article-meta">
+            {{ article.published_at|date:"F j, Y" }}
+            {% for tag in article.tags.all %}
+                <a href="{% url 'articles:by_tag' tag.slug %}" class="tag">{{ tag.name }}</a>
+            {% endfor %}
+        </div>
+    </header>
+
+    <div class="article-content">
+        {{ article.content|safe }}
+    </div>
+</article>
+
+<div class="reactions">
+    {% if user.is_authenticated %}
+    <form method="post" action="{% url 'reactions:toggle' article.slug 'like' %}">
+        {% csrf_token %}
+        <button type="submit" class="reaction-btn {% if user_reaction == 'like' %}active{% endif %}">
+            ↑ {{ likes }}
+        </button>
+    </form>
+    <form method="post" action="{% url 'reactions:toggle' article.slug 'dislike' %}">
+        {% csrf_token %}
+        <button type="submit" class="reaction-btn {% if user_reaction == 'dislike' %}active{% endif %}">
+            ↓ {{ dislikes }}
+        </button>
+    </form>
+    {% else %}
+    <span class="reaction-btn">↑ {{ likes }}</span>
+    <span class="reaction-btn">↓ {{ dislikes }}</span>
+    <span class="login-prompt"><a href="{% url 'account_login' %}?next={{ request.path }}">Log in</a> to react</span>
+    {% endif %}
+</div>
+
+<section class="comments-section">
+    <h2>Comments ({{ comments.count }})</h2>
+
+    {% for comment in comments %}
+    <div class="comment">
+        <div class="comment-meta">
+            <strong>{{ comment.user.display_name }}</strong>
+            · {{ comment.created_at|date:"M j, Y" }}
+        </div>
+        <div class="comment-content">{{ comment.content|linebreaks }}</div>
+    </div>
+    {% empty %}
+    <p>No comments yet. Be the first to share your thoughts.</p>
+    {% endfor %}
+
+    {% if user.is_authenticated %}
+    <form class="comment-form" method="post" action="{% url 'articles:add_comment' article.slug %}">
+        {% csrf_token %}
+        {{ form.content }}
+        <button type="submit">Post Comment</button>
+    </form>
+    {% else %}
+    <p class="login-prompt">
+        <a href="{% url 'account_login' %}?next={{ request.path }}">Log in</a> to leave a comment.
+    </p>
+    {% endif %}
+</section>
+
+<a href="/" class="back-link">← back to essays</a>
+{% endblock %}

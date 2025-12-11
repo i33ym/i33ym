@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tag.name }} — i33ym{% endblock %}
+
+{% block extra_css %}
+.tag-header {
+    margin-bottom: 40px;
+}
+
+.tag-header h1 {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.tag-header p {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #888;
+    margin-top: 6px;
+}
+
+.article-list {
+    list-style: none;
+}
+
+.article-item {
+    margin-bottom: 40px;
+}
+
+.article-item h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.article-item h2 a {
+    text-decoration: none;
+}
+
+.article-item h2 a:hover {
+    text-decoration: underline;
+}
+
+.article-meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #888;
+}
+
+.back-link {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+{% endblock %}
+
+{% block content %}
+<div class="tag-header">
+    <h1>{{ tag.name }}</h1>
+    <p>{{ articles.count }} essay{% if articles.count != 1 %}s{% endif %}</p>
+</div>
+
+<ul class="article-list">
+    {% for article in articles %}
+    <li class="article-item">
+        <h2><a href="{% url 'articles:detail' article.slug %}">{{ article.title }}</a></h2>
+        <div class="article-meta">{{ article.published_at|date:"F Y" }}</div>
+    </li>
+    {% empty %}
+    <p>No essays with this tag yet.</p>
+    {% endfor %}
+</ul>
+
+<a href="/" class="back-link">← back to essays</a>
+{% endblock %}

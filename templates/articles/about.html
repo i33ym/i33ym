@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}About — i33ym{% endblock %}
+
+{% block extra_css %}
+.about-page h1 {
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 30px;
+}
+
+.about-content p {
+    margin-bottom: 1.5em;
+}
+
+.about-content a {
+    text-decoration: underline;
+}
+
+.contact-links {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid #eee;
+}
+
+.contact-links h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.contact-links ul {
+    list-style: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+}
+
+.contact-links li {
+    margin-bottom: 10px;
+}
+
+.contact-links a {
+    color: #555;
+    text-decoration: none;
+}
+
+.contact-links a:hover {
+    color: #2c2c2c;
+    text-decoration: underline;
+}
+{% endblock %}
+
+{% block content %}
+<div class="about-page">
+    <h1>About</h1>
+
+    <div class="about-content">
+        <p>
+            Hi, I'm i33ym — a software engineer and mathematician based in Uzbekistan. 
+            I lead a team specializing in LLMs, AI agents, and software architecture 
+            at one of the best companies in Uzbekistan.
+        </p>
+
+        <p>
+            I write about programming, philosophy, and mathematics. My goal is to 
+            explore ideas deeply and share what I learn along the way.
+        </p>
+
+        <p>
+            With a background in Go and Lisp, I'm currently exploring the Python 
+            ecosystem for AI and machine learning projects. I believe in building 
+            clean, maintainable systems.
+        </p>
+    </div>
+
+    <div class="contact-links">
+        <h2>Find me elsewhere</h2>
+        <ul>
+            <li><a href="https://github.com/i33ym" target="_blank">GitHub</a></li>
+            <li><a href="https://t.me/i33ym" target="_blank">Telegram</a></li>
+            <li><a href="mailto:i33y.muhitdinov@gmail.com">Email</a></li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

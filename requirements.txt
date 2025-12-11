@@ -1,0 +1,13 @@
+django
+django-jazzmin
+django-tinymce
+django-allauth
+python-decouple
+psycopg2-binary
+PyJWT
+cryptography
+fido2
+qrcode
+gunicorn
+whitenoise
+resend

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Security Settings — i33ym{% endblock %}
+
+{% block extra_css %}
+.security-page {
+    max-width: 500px;
+    margin: 40px auto;
+}
+
+.security-page h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 30px;
+}
+
+.mfa-status {
+    padding: 20px;
+    border-radius: 5px;
+    margin-bottom: 30px;
+    font-family: 'Inter', sans-serif;
+}
+
+.mfa-status.enabled {
+    background: #e8f5e9;
+    border: 1px solid #c8e6c9;
+}
+
+.mfa-status.disabled {
+    background: #fff3e0;
+    border: 1px solid #ffe0b2;
+}
+
+.mfa-status h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.mfa-status p {
+    font-size: 14px;
+    color: #555;
+    margin: 0;
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #2c2c2c;
+    color: #fff;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #444;
+}
+
+.btn-danger {
+    background: #c62828;
+    color: #fff;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #b71c1c;
+}
+
+.back-link {
+    display: block;
+    margin-top: 40px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+{% endblock %}
+
+{% block content %}
+<div class="security-page">
+    <h1>Security Settings</h1>
+
+    {% if authenticators %}
+    <div class="mfa-status enabled">
+        <h2>✓ Two-Factor Authentication Enabled</h2>
+        <p>Your account is protected with an authenticator app.</p>
+    </div>
+    <form method="post" action="/accounts/2fa/totp/deactivate/">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Disable 2FA</button>
+    </form>
+    {% else %}
+    <div class="mfa-status disabled">
+        <h2>Two-Factor Authentication Disabled</h2>
+        <p>Add an extra layer of security to your account.</p>
+    </div>
+    <a href="/accounts/2fa/totp/activate/" class="btn btn-primary">Enable 2FA</a>
+    {% endif %}
+
+    <a href="/" class="back-link">← back to essays</a>
+</div>
+{% endblock %}
