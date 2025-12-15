@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Subscriber
 from .forms import SubscribeForm
+from .emails import send_newsletter
 from apps.articles.models import Tag
 
 
@@ -12,6 +13,16 @@ def subscribe(request):
             email = form.cleaned_data["email"]
             subscriber, created = Subscriber.objects.get_or_create(email=email)
             if created:
+                send_newsletter(
+                    subscriber.email,
+                    "Welcome to i33ym",
+                    """
+                    <h2>Thanks for subscribing!</h2>
+                    <p>You'll receive updates when I publish new essays.</p>
+                    <p><a href="https://i33ym.cc/newsletter/preferences/{}/">Set your preferences</a> to choose which topics you'd like to follow.</p>
+                    """.format(subscriber.token),
+                    subscriber.token
+                )
                 messages.success(request, "Check your email to confirm your subscription.")
             else:
                 messages.info(request, "You're already subscribed.")
