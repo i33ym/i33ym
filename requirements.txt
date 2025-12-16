@@ -11,3 +11,13 @@ qrcode
 gunicorn
 whitenoise
 resend
+langchain
+langchain-core
+langchain-classic
+langchain-openai
+langchain-postgres
+langchain-community
+langchain-text-splitters
+langgraph
+psycopg[binary]
+rank-bm25

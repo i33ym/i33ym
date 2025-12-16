@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "apps.comments",
     "apps.reactions",
     "apps.subscribers",
+    "apps.rag",
 ]
 
 MIDDLEWARE = [
@@ -141,3 +142,5 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+OPENAI_API_KEY = config("OPENAI_API_KEY")

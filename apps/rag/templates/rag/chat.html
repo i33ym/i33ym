@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Multicard Docs Assistant{% endblock %}
+
+{% block content %}
+<div class="rag-container">
+    <header class="rag-header">
+        <h1>Multicard API Assistant</h1>
+        <p>Задайте вопрос по документации платежного API</p>
+        <label class="debug-toggle">
+            <input type="checkbox" id="debugToggle" {% if show_debug %}checked{% endif %}>
+            Show debug info
+        </label>
+    </header>
+
+    <div class="chat-wrapper">
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <div class="message-content">
+                    Привет! Я помогу вам разобраться с API Multicard. Задайте свой вопрос.
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-panel" id="debugPanel" style="display: none;">
+            <h3>Debug Info</h3>
+            <pre id="debugContent"></pre>
+        </div>
+    </div>
+
+    <form class="chat-input" id="chatForm">
+        <input 
+            type="text" 
+            id="queryInput" 
+            placeholder="Например: Как настроить callback для платежей?"
+            autocomplete="off"
+        >
+        <button type="submit" id="submitBtn">
+            <span class="btn-text">Отправить</span>
+            <span class="btn-loading" style="display: none;">...</span>
+        </button>
+    </form>
+</div>
+
+<style>
+.rag-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.rag-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.rag-header h1 {
+    margin-bottom: 0.5rem;
+}
+
+.rag-header p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.debug-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.chat-wrapper {
+    display: flex;
+    gap: 1rem;
+}
+
+.chat-container {
+    flex: 1;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    height: 500px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #fafafa;
+}
+
+.debug-panel {
+    width: 350px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    height: 500px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: monospace;
+    font-size: 0.75rem;
+}
+
+.debug-panel h3 {
+    margin-top: 0;
+    color: #569cd6;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.debug-panel pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+}
+
+.message {
+    margin-bottom: 1rem;
+    display: flex;
+}
+
+.message.user {
+    justify-content: flex-end;
+}
+
+.message-content {
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    line-height: 1.5;
+}
+
+.message.user .message-content {
+    background: #007bff;
+    color: white;
+}
+
+.message.assistant .message-content {
+    background: white;
+    border: 1px solid #e0e0e0;
+}
+
+.message-content pre {
+    background: #f4f4f4;
+    padding: 0.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+}
+
+.message-content code {
+    background: #f4f4f4;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.875rem;
+}
+
+.sources {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #eee;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.chat-input {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.chat-input input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.chat-input button {
+    padding: 0.75rem 1.5rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.chat-input button:hover {
+    background: #0056b3;
+}
+
+.chat-input button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+const chatContainer = document.getElementById('chatContainer');
+const chatForm = document.getElementById('chatForm');
+const queryInput = document.getElementById('queryInput');
+const submitBtn = document.getElementById('submitBtn');
+const debugToggle = document.getElementById('debugToggle');
+const debugPanel = document.getElementById('debugPanel');
+const debugContent = document.getElementById('debugContent');
+
+debugToggle.addEventListener('change', () => {
+    debugPanel.style.display = debugToggle.checked ? 'block' : 'none';
+});
+
+if (debugToggle.checked) {
+    debugPanel.style.display = 'block';
+}
+
+function addMessage(content, isUser, sources = []) {
+    const div = document.createElement('div');
+    div.className = `message ${isUser ? 'user' : 'assistant'}`;
+    
+    let html = `<div class="message-content">${formatContent(content)}`;
+    
+    if (sources.length > 0) {
+        html += `<div class="sources"><strong>Источники:</strong> ${sources.map(s => s.source).join(', ')}</div>`;
+    }
+    
+    html += '</div>';
+    div.innerHTML = html;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function formatContent(content) {
+    return content
+        .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+}
+
+function updateDebug(data) {
+    if (debugToggle.checked && data.debug) {
+        debugContent.textContent = JSON.stringify(data.debug, null, 2);
+    }
+}
+
+function setLoading(loading) {
+    submitBtn.disabled = loading;
+    submitBtn.querySelector('.btn-text').style.display = loading ? 'none' : 'inline';
+    submitBtn.querySelector('.btn-loading').style.display = loading ? 'inline' : 'none';
+    queryInput.disabled = loading;
+}
+
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const query = queryInput.value.trim();
+    if (!query) return;
+    
+    addMessage(query, true);
+    queryInput.value = '';
+    setLoading(true);
+    
+    try {
+        const response = await fetch('{% url "rag:api" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                query: query,
+                debug: debugToggle.checked
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            addMessage(`Ошибка: ${data.error}`, false);
+        } else {
+            addMessage(data.answer, false, data.sources || []);
+            updateDebug(data);
+        }
+    } catch (err) {
+        addMessage(`Ошибка соединения: ${err.message}`, false);
+    } finally {
+        setLoading(false);
+        queryInput.focus();
+    }
+});
+</script>
+{% endblock %}

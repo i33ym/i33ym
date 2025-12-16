@@ -9,6 +9,7 @@ urlpatterns = [
     path("tinymce/", include("tinymce.urls")),
     path("react/", include("apps.reactions.urls")),
     path("newsletter/", include("apps.subscribers.urls")),
+    path("rag/", include("apps.rag.urls")),
     path("", include("apps.articles.urls")),
 ]
 
