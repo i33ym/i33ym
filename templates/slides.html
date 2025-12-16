@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building a Production RAG System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --text: #2c2c2c;
+            --muted: #888;
+            --light-muted: #666;
+            --border: #e0e0e0;
+            --code-bg: #f0f0f0;
+            --code-block-bg: #2c2c2c;
+            --tag-bg: #eee;
+            --green: #2e7d32;
+            --red: #c62828;
+        }
+        
+        .reveal-viewport {
+            background: var(--bg);
+        }
+        
+        .reveal {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 28px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+        
+        .reveal h1 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 2.4em;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.4em;
+            line-height: 1.3;
+        }
+        
+        .reveal h2 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 1.8em;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.6em;
+            line-height: 1.3;
+        }
+        
+        .reveal h3 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        .reveal p {
+            margin-bottom: 0.8em;
+        }
+        
+        .reveal .meta {
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        
+        .reveal .ui-text {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .reveal ul, .reveal ol {
+            margin-left: 1.2em;
+            text-align: left;
+        }
+        
+        .reveal li {
+            margin-bottom: 0.6em;
+        }
+        
+        .reveal code {
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.85em;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .reveal pre {
+            width: 100%;
+            font-size: 0.48em;
+            box-shadow: none;
+            border-radius: 5px;
+            margin: 1em 0;
+        }
+        
+        .reveal pre code {
+            font-family: 'SF Mono', Consolas, monospace;
+            padding: 20px;
+            line-height: 1.5;
+            background: var(--code-block-bg);
+            color: #f0f0f0;
+            border-radius: 5px;
+            max-height: 420px;
+        }
+        
+        .reveal table {
+            margin: 0 auto;
+            border-collapse: collapse;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75em;
+        }
+        
+        .reveal table th {
+            background: var(--text);
+            color: #fff;
+            padding: 12px 20px;
+            font-weight: 500;
+            text-align: left;
+        }
+        
+        .reveal table td {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .reveal table tr:nth-child(even) {
+            background: #f5f5f5;
+        }
+        
+        .reveal a {
+            color: var(--text);
+            text-decoration: underline;
+        }
+        
+        .muted {
+            color: var(--muted);
+        }
+        
+        .light-muted {
+            color: var(--light-muted);
+        }
+        
+        .green {
+            color: var(--green);
+        }
+        
+        .red {
+            color: var(--red);
+        }
+        
+        .bold {
+            font-weight: 600;
+        }
+        
+        .tag {
+            display: inline-block;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #666;
+            background: var(--tag-bg);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        
+        .score-good {
+            display: inline-block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9em;
+            background: #e8f5e9;
+            color: var(--green);
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        
+        .score-bad {
+            display: inline-block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9em;
+            background: #ffebee;
+            color: var(--red);
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        
+        .score-mid {
+            display: inline-block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9em;
+            background: #fff3e0;
+            color: #e65100;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 1.5em 0;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.7em;
+        }
+        
+        .pipeline-step {
+            background: var(--text);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        
+        .pipeline-arrow {
+            color: var(--muted);
+            font-size: 1.2em;
+        }
+        
+        .box {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 25px;
+            margin: 1em auto;
+            max-width: 85%;
+        }
+        
+        .two-col {
+            display: flex;
+            gap: 30px;
+            text-align: left;
+        }
+        
+        .two-col > div {
+            flex: 1;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 20px;
+        }
+        
+        .two-col h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin: 0 0 12px 0;
+            color: var(--text);
+        }
+        
+        .two-col p {
+            font-size: 0.8em;
+            margin: 6px 0;
+        }
+        
+        .debug-box {
+            background: var(--code-block-bg);
+            color: #f0f0f0;
+            border-radius: 5px;
+            padding: 20px 25px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.65em;
+            text-align: left;
+            line-height: 1.8;
+            max-width: 550px;
+            margin: 0 auto;
+        }
+        
+        .debug-box .label {
+            color: #9cdcfe;
+        }
+        
+        .debug-box .pass {
+            color: #4ec9b0;
+        }
+        
+        .debug-box .num {
+            color: #b5cea8;
+        }
+        
+        .btn {
+            display: inline-block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8em;
+            background: var(--text);
+            color: #fff !important;
+            padding: 14px 32px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 1em 0;
+        }
+        
+        .btn:hover {
+            background: #444;
+        }
+        
+        .quote {
+            border-left: 3px solid var(--border);
+            padding-left: 20px;
+            margin: 1.5em auto;
+            max-width: 600px;
+            color: #555;
+            font-style: italic;
+        }
+        
+        .big-num {
+            font-family: 'Inter', sans-serif;
+            font-size: 5em;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1;
+            margin: 0.2em 0;
+        }
+        
+        .tech-list {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 1.5em 0;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8em;
+        }
+        
+        .tech-item {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 5px;
+        }
+        
+        .slide-number {
+            font-family: 'Inter', sans-serif !important;
+            color: var(--muted) !important;
+            font-size: 13px !important;
+        }
+        
+        .reveal .progress {
+            background: var(--border);
+            height: 2px;
+        }
+        
+        .reveal .progress span {
+            background: var(--text);
+        }
+        
+        section {
+            text-align: center;
+        }
+        
+        .left {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            
+            <!-- Title -->
+            <section>
+                <h1>Building a Production<br>RAG System</h1>
+                <p class="muted" style="margin-top: 0.5em;">Beyond "embed, search, generate"</p>
+                <p class="meta" style="margin-top: 3em;">December 2024</p>
+            </section>
+
+            <!-- Problem -->
+            <section>
+                <h2>The Problem</h2>
+                <p>Payment API documentation: <span class="bold">50+ pages</span></p>
+                <p class="light-muted">Endpoints, auth flows, error codes, webhooks, code examples...</p>
+                <p class="fragment" style="margin-top: 1.5em;">
+                    Developers spend hours searching.<br>
+                    <span class="bold">What if they could just ask?</span>
+                </p>
+            </section>
+
+            <!-- Naive Solution -->
+            <section>
+                <h2>The "Obvious" Solution</h2>
+                <div class="pipeline">
+                    <span class="pipeline-step">Embed docs</span>
+                    <span class="pipeline-arrow">→</span>
+                    <span class="pipeline-step">Vector search</span>
+                    <span class="pipeline-arrow">→</span>
+                    <span class="pipeline-step">LLM generates</span>
+                </div>
+                <p class="fragment">This is <strong>RAG</strong> — Retrieval Augmented Generation</p>
+                <p class="fragment red bold" style="margin-top: 1em;">I tried it. It was mediocre.</p>
+            </section>
+
+            <!-- Benchmark -->
+            <section>
+                <h2>18 Techniques Benchmarked</h2>
+                <p class="muted">Same dataset. Same evaluation.</p>
+            </section>
+
+            <!-- Results Table -->
+            <section>
+                <h2>The Results</h2>
+                <table>
+                    <thead>
+                        <tr><th>Technique</th><th>Score</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Semantic Chunking</td><td><span class="score-bad">0.20</span></td></tr>
+                        <tr><td>Simple RAG</td><td><span class="score-bad">0.30</span></td></tr>
+                        <tr><td>HyDE</td><td><span class="score-mid">0.50</span></td></tr>
+                        <tr><td>Reranker</td><td><span class="score-mid">0.70</span></td></tr>
+                        <tr><td>Fusion (Hybrid Search)</td><td><span class="score-good">0.83</span></td></tr>
+                        <tr><td>CRAG</td><td><span class="score-good">0.82</span></td></tr>
+                        <tr><td>Adaptive RAG</td><td><span class="score-good">0.86</span></td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Pattern -->
+            <section>
+                <h2>The Pattern</h2>
+                <p>Winners don't rely on <span class="red bold">one method</span></p>
+                <p class="fragment">They <span class="green bold">combine and verify</span></p>
+            </section>
+
+            <!-- Architecture -->
+            <section>
+                <h2>The Architecture</h2>
+                <div class="pipeline">
+                    <span class="pipeline-step">Hybrid Search</span>
+                    <span class="pipeline-arrow">→</span>
+                    <span class="pipeline-step">Rerank</span>
+                    <span class="pipeline-arrow">→</span>
+                    <span class="pipeline-step">Relevance Check</span>
+                    <span class="pipeline-arrow">→</span>
+                    <span class="pipeline-step">Generate</span>
+                    <span class="pipeline-arrow">→</span>
+                    <span class="pipeline-step">Grounding</span>
+                </div>
+                <p class="muted">6 stages instead of 3</p>
+            </section>
+
+            <!-- Hybrid Search -->
+            <section>
+                <section>
+                    <h2>Stage 1: Hybrid Search</h2>
+                    <p>Vector search + Keyword search (BM25)</p>
+                </section>
+                
+                <section>
+                    <h3>Why Both?</h3>
+                    <div class="two-col">
+                        <div>
+                            <h4>Vector Search</h4>
+                            <p class="muted">"How do I authenticate?"</p>
+                            <p class="muted">→ finds "obtaining access tokens"</p>
+                            <p style="margin-top: 1em;"><span class="green">✓</span> Semantic meaning</p>
+                            <p><span class="red">✗</span> Exact terms</p>
+                        </div>
+                        <div>
+                            <h4>BM25 Search</h4>
+                            <p class="muted">"POST /api/v1/payment"</p>
+                            <p class="muted">→ finds exact endpoint</p>
+                            <p style="margin-top: 1em;"><span class="red">✗</span> Semantic meaning</p>
+                            <p><span class="green">✓</span> Exact terms</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <section>
+                    <h3>Reciprocal Rank Fusion</h3>
+                    <pre><code class="python">def hybrid_search(query, k=10):
+    vector_results = vector_store.similarity_search(query, k=k)
+    bm25_results = bm25_retriever.get_relevant_documents(query)
+    
+    fused_scores = {}
+    for results in [vector_results, bm25_results]:
+        for rank, doc in enumerate(results):
+            doc_id = doc.metadata["id"]
+            if doc_id not in fused_scores:
+                fused_scores[doc_id] = 0
+            fused_scores[doc_id] += 1 / (60 + rank + 1)
+    
+    return sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)[:k]</code></pre>
+                </section>
+            </section>
+
+            <!-- Reranking -->
+            <section>
+                <section>
+                    <h2>Stage 2: Reranking</h2>
+                    <p>10 documents retrieved. Not all are relevant.</p>
+                    <p class="fragment">Score each one against the query.</p>
+                </section>
+                
+                <section>
+                    <h3>Cross-Encoder Scoring</h3>
+                    <pre><code class="python">def rerank_documents(query, documents, top_n=5):
+    scored = []
+    
+    for doc in documents:
+        prompt = f"""Rate relevance from 0 to 10. Reply with only a number.
+
+Query: {query}
+Document: {doc.page_content[:500]}"""
+        
+        score = float(llm.invoke(prompt).content)
+        scored.append({"doc": doc, "score": score})
+    
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    return [item["doc"] for item in scored[:top_n]]</code></pre>
+                </section>
+                
+                <section>
+                    <h3>Real Output</h3>
+                    <div class="debug-box" style="text-align: center;">
+                        <span class="label">rerank_scores:</span> [<span class="num pass">9</span>, <span class="num pass">8</span>, <span class="num pass">7</span>, <span class="num">3</span>, <span class="num">2</span>]
+                    </div>
+                    <p class="fragment" style="margin-top: 1.5em;"><span class="green bold">Top 3</span>: relevant (7+)</p>
+                    <p class="fragment"><span class="red bold">Bottom 2</span>: noise — filtered out</p>
+                </section>
+            </section>
+
+            <!-- CRAG -->
+            <section>
+                <section>
+                    <h2>Stage 3: Relevance Check</h2>
+                    <p>The <span class="bold">CRAG</span> pattern</p>
+                    <p class="muted ui-text" style="font-size: 0.8em;">Corrective Retrieval Augmented Generation</p>
+                </section>
+                
+                <section>
+                    <h3>The Problem</h3>
+                    <p>Query doesn't match any documents well.</p>
+                    <p class="fragment" style="margin-top: 1em;">Simple RAG: generates a <span class="red bold">confident wrong answer</span></p>
+                </section>
+                
+                <section>
+                    <h3>The Solution</h3>
+                    <pre><code class="python">def check_relevance(query, documents):
+    context = "\n".join([doc.page_content[:300] for doc in documents])
+    
+    prompt = f"""Can this context answer the query? Reply 'yes' or 'no'.
+
+Query: {query}
+Context: {context}"""
+    
+    return "yes" in llm.invoke(prompt).content.lower()
+
+
+def rag_with_retry(query):
+    docs = retrieve(query)
+    
+    if not check_relevance(query, docs):
+        new_query = rewrite_query(query)
+        docs = retrieve(new_query)
+        
+        if not check_relevance(new_query, docs):
+            return "I don't have information about this."
+    
+    return generate_answer(query, docs)</code></pre>
+                </section>
+            </section>
+
+            <!-- Grounding -->
+            <section>
+                <section>
+                    <h2>Stage 4: Grounding Check</h2>
+                    <p>LLM generates an answer...</p>
+                    <p class="fragment">Then verify: <span class="bold">is it actually in the docs?</span></p>
+                </section>
+                
+                <section>
+                    <h3>Hallucination Prevention</h3>
+                    <pre><code class="python">def check_grounding(answer, documents):
+    context = "\n".join([doc.page_content for doc in documents])
+    
+    prompt = f"""Is this answer fully supported by the context?
+Reply only 'yes' or 'no'.
+
+Context: {context}
+
+Answer: {answer}"""
+    
+    return "yes" in llm.invoke(prompt).content.lower()
+
+
+def generate_with_verification(query, documents):
+    answer = generate_answer(query, documents)
+    
+    if not check_grounding(answer, documents):
+        answer = generate_answer(query, documents, strict=True)
+    
+    return answer</code></pre>
+                </section>
+            </section>
+
+            <!-- Full Pipeline -->
+            <section>
+                <h2>LangGraph Pipeline</h2>
+                <pre><code class="python">from langgraph.graph import StateGraph, START, END
+
+workflow = StateGraph(RAGState)
+
+workflow.add_node("retrieve", retrieve_documents)
+workflow.add_node("rerank", rerank_documents)
+workflow.add_node("check_relevance", check_relevance)
+workflow.add_node("rewrite", rewrite_query)
+workflow.add_node("generate", generate_answer)
+workflow.add_node("check_grounding", check_grounding)
+
+workflow.add_edge(START, "retrieve")
+workflow.add_edge("retrieve", "rerank")
+workflow.add_edge("rerank", "check_relevance")
+
+workflow.add_conditional_edges(
+    "check_relevance",
+    route_by_relevance,
+    {"relevant": "generate", "not_relevant": "rewrite"}
+)
+
+workflow.add_edge("rewrite", "retrieve")
+workflow.add_edge("generate", "check_grounding")
+workflow.add_edge("check_grounding", END)
+
+pipeline = workflow.compile()</code></pre>
+            </section>
+
+            <!-- Vector Store -->
+            <section>
+                <h2>Vector Store Setup</h2>
+                <pre><code class="python">from langchain_postgres import PGVector
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+connection = "postgresql://user:pass@localhost/mydb"
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+vector_store = PGVector(
+    embeddings=embeddings,
+    collection_name="docs",
+    connection=connection,
+)
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    separators=["\n## ", "\n### ", "\n\n", "\n", " "]
+)
+
+chunks = splitter.split_documents(documents)
+vector_store.add_documents(chunks)</code></pre>
+            </section>
+
+            <!-- Stack -->
+            <section>
+                <h2>The Stack</h2>
+                <div class="tech-list">
+                    <span class="tech-item">Django</span>
+                    <span class="tech-item">PostgreSQL + pgvector</span>
+                    <span class="tech-item">LangChain</span>
+                    <span class="tech-item">LangGraph</span>
+                    <span class="tech-item">OpenAI</span>
+                </div>
+                <p class="fragment" style="margin-top: 2em;">Key decision: <span class="bold">pgvector</span> instead of separate vector DB</p>
+                <p class="fragment muted">One database for everything</p>
+            </section>
+
+            <!-- Results -->
+            <section>
+                <h2>Results</h2>
+                <div class="big-num">731</div>
+                <p>document chunks indexed</p>
+                <p class="fragment" style="margin-top: 1em;">Query latency: <span class="bold">~3-4 seconds</span></p>
+                <p class="fragment muted ui-text" style="font-size: 0.8em;">Reranking is the bottleneck</p>
+            </section>
+
+            <!-- Debug -->
+            <section>
+                <h2>Observability</h2>
+                <p class="muted" style="margin-bottom: 1em;">Every stage is traceable</p>
+                <div class="debug-box">
+<span class="label">[retrieve]</span> vector: <span class="num">5</span>, bm25: <span class="num">5</span>, fused: <span class="num">10</span>
+<span class="label">[rerank]</span> scores: [<span class="num">9</span>, <span class="num">8</span>, <span class="num">7</span>, <span class="num">3</span>, <span class="num">2</span>]
+<span class="label">[relevance]</span> <span class="pass">passed</span>
+<span class="label">[grounding]</span> <span class="pass">passed</span>
+                </div>
+            </section>
+
+            <!-- Demo -->
+            <section>
+                <h2>Live Demo</h2>
+                <a href="https://i33ym.cc/rag/?debug=true" target="_blank" class="btn">i33ym.cc/rag</a>
+                <p class="muted ui-text" style="font-size: 0.8em; margin-top: 1em;">Enable Debug toggle to see the pipeline in real-time</p>
+            </section>
+
+            <!-- Future -->
+            <section>
+                <h2>Future Improvements</h2>
+                <ul style="max-width: 650px; margin: 0 auto;">
+                    <li class="fragment"><strong>Local cross-encoder</strong> — faster reranking without API calls</li>
+                    <li class="fragment"><strong>Embedding cache</strong> — incremental document updates</li>
+                    <li class="fragment"><strong>User feedback</strong> — thumbs up/down to tune retrieval</li>
+                    <li class="fragment"><strong>Query classification</strong> — route to specialized sub-pipelines</li>
+                </ul>
+            </section>
+
+            <!-- Takeaway -->
+            <section>
+                <h2>The Takeaway</h2>
+                <p>Simple RAG scores <span class="score-bad">0.30</span></p>
+                <p class="fragment" style="margin-top: 0.8em;">Production RAG needs <span class="green bold">verification at every step</span></p>
+                <div class="fragment quote">
+                    The benchmark winners share one trait: they don't trust any single component.
+                </div>
+            </section>
+
+            <!-- Resources -->
+            <section>
+                <h2>Resources</h2>
+                <ul class="left" style="list-style: none; max-width: 500px; margin: 0 auto;">
+                    <li style="margin-bottom: 1em;">Essay: <a href="https://i33ym.cc/building-rag/">i33ym.cc/building-rag</a></li>
+                    <li style="margin-bottom: 1em;">Demo: <a href="https://i33ym.cc/rag/">i33ym.cc/rag</a></li>
+                    <li style="margin-bottom: 1em;">LangChain: <a href="https://docs.langchain.com">docs.langchain.com</a></li>
+                    <li>LangGraph: <a href="https://langchain-ai.github.io/langgraph/">langchain-ai.github.io/langgraph</a></li>
+                </ul>
+            </section>
+
+            <!-- Q&A -->
+            <section>
+                <h1>Questions?</h1>
+                <p class="meta" style="margin-top: 3em;">i33ym.cc</p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            transition: 'fade',
+            transitionSpeed: 'fast',
+            plugins: [RevealHighlight],
+            width: 1100,
+            height: 700,
+            margin: 0.12,
+        });
+    </script>
+</body>
+</html>

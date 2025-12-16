@@ -6,4 +6,5 @@ app_name = "rag"
 urlpatterns = [
     path("", views.chat_page, name="chat"),
     path("api/query/", views.chat_api, name="api"),
+    path("api/stream/", views.chat_stream, name="stream"),
 ]

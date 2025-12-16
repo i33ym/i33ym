@@ -287,3 +287,84 @@ def process_query(query: str, include_debug: bool = False) -> dict:
         response["debug"] = result.get("debug_info", {})
     
     return response
+
+async def process_query_streaming(query: str, include_debug: bool = False):
+    """Generator that yields SSE events for each pipeline stage."""
+    
+    initial_state: RAGState = {
+        "query": query,
+        "rewritten_query": "",
+        "vector_results": [],
+        "bm25_results": [],
+        "fused_results": [],
+        "reranked_results": [],
+        "is_relevant": False,
+        "answer": "",
+        "is_grounded": False,
+        "retry_count": 0,
+        "debug_info": {}
+    }
+    
+    async for event in rag_pipeline.astream(initial_state, stream_mode="updates"):
+        for node_name, node_output in event.items():
+            yield {
+                "type": "stage",
+                "stage": node_name,
+                "data": {
+                    "debug": node_output.get("debug_info", {}) if include_debug else None
+                }
+            }
+    
+    final_state = await rag_pipeline.ainvoke(initial_state)
+    
+    sources = []
+    for doc in final_state.get("reranked_results", [])[:3]:
+        sources.append({
+            "content": doc.page_content[:200] + "...",
+            "source": doc.metadata.get("source", "unknown")
+        })
+    
+    yield {
+        "type": "answer",
+        "data": {
+            "answer": final_state["answer"],
+            "sources": sources,
+            "is_grounded": final_state.get("is_grounded", True)
+        }
+    }
+
+
+async def stream_answer_tokens(query: str, context_docs: list):
+    """Stream answer tokens as they're generated."""
+    from langchain_openai import ChatOpenAI
+    from langchain_core.prompts import ChatPromptTemplate
+    
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",
+        temperature=0,
+        api_key=settings.OPENAI_API_KEY,
+        streaming=True
+    )
+    
+    context = "\n\n---\n\n".join([d.page_content for d in context_docs])
+    
+    prompt = ChatPromptTemplate.from_template(
+        """Ты — помощник по документации платежного API Multicard.
+Отвечай только на основе предоставленного контекста.
+Если в контексте нет ответа, так и скажи.
+Включай примеры кода, когда это уместно.
+Отвечай на том же языке, что и вопрос.
+
+Контекст:
+{context}
+
+Вопрос: {query}
+
+Ответ:"""
+    )
+    
+    chain = prompt | llm
+    
+    async for chunk in chain.astream({"query": query, "context": context}):
+        if chunk.content:
+            yield chunk.content
