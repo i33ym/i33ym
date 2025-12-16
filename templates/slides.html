@@ -357,6 +357,15 @@
         .left {
             text-align: left;
         }
+
+        .reveal pre code .hljs-ln {
+            display: none;
+        }
+
+        .hljs {
+            background: var(--code-block-bg) !important;
+            display: block !important;
+        }
     </style>
 </head>
 <body>
@@ -620,14 +629,14 @@ workflow.add_edge("rerank", "check_relevance")
 workflow.add_conditional_edges(
     "check_relevance",
     route_by_relevance,
-    {"relevant": "generate", "not_relevant": "rewrite"}
-)
+    {"relevant": "generate", "not_relevant": "rewrite"})
 
 workflow.add_edge("rewrite", "retrieve")
 workflow.add_edge("generate", "check_grounding")
 workflow.add_edge("check_grounding", END)
 
-pipeline = workflow.compile()</code></pre>
+pipeline = workflow.compile()
+                </code></pre>
             </section>
 
             <!-- Vector Store -->
@@ -649,8 +658,7 @@ vector_store = PGVector(
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
-    separators=["\n## ", "\n### ", "\n\n", "\n", " "]
-)
+    separators=["\n## ", "\n### ", "\n\n", "\n", " "])
 
 chunks = splitter.split_documents(documents)
 vector_store.add_documents(chunks)</code></pre>
