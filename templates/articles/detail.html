@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ article.title }} — i33ym{% endblock %}
+{% block title %}{{ article.title }} – i33ym{% endblock %}
 
 {% block extra_css %}
 .article-header {
@@ -215,6 +215,15 @@
     font-size: 14px;
     display: inline-block;
     margin-top: 40px;
+}
+
+.article-content pre {
+    white-space: pre-wrap;
+}
+
+.article-content pre code {
+    white-space: pre;
+    display: block;
 }
 {% endblock %}
 

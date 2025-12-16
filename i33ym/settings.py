@@ -144,3 +144,19 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 OPENAI_API_KEY = config("OPENAI_API_KEY")
+
+TINYMCE_DEFAULT_CONFIG = {
+    "menubar": "file edit view insert format tools table help",
+    "plugins": "code codesample",
+    "toolbar": "code codesample",
+    "codesample_languages": [
+        {"text": "Python", "value": "python"},
+        {"text": "JavaScript", "value": "javascript"},
+        {"text": "HTML/XML", "value": "markup"},
+        {"text": "Bash", "value": "bash"},
+    ],
+    "valid_elements": "*[*]",
+    "extended_valid_elements": "pre[*],code[*]",
+    "preserve_newlines": True,
+    "forced_root_block": "",
+}
