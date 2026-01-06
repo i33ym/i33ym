@@ -1,0 +1,300 @@
+{% extends "slides-base.html" %}
+
+{% block title %}The Perceptron: Where It All Began{% endblock %}
+
+{% block slides %}
+<section>
+    <h1>The Perceptron</h1>
+    <p>Where Machine Learning Began</p>
+    <p class="meta" style="margin-top: 2em;">Isroil Muhitdinov · January 2026</p>
+</section>
+
+<section>
+    <section>
+        <h2>What is Machine Learning?</h2>
+        <p class="fragment">Traditional programming:</p>
+        <p class="fragment"><span class="math-inline">Rules + Data → Output</span></p>
+        <p class="fragment" style="margin-top: 1em;">Machine learning:</p>
+        <p class="fragment"><span class="math-inline">Data + Output → Rules</span></p>
+    </section>
+    <section>
+        <h3>The Key Insight</h3>
+        <p>Instead of writing rules by hand...</p>
+        <p class="fragment">...let the computer <span class="bold">learn them from examples</span></p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <div class="year">1958</div>
+        <h2>Frank Rosenblatt</h2>
+        <p>Cornell Aeronautical Laboratory</p>
+        <p class="muted ui-text" style="font-size: 0.8em;">Invents the Perceptron</p>
+    </section>
+    <section>
+        <div class="quote">
+            "The embryo of an electronic computer that [the Navy] expects will be able to walk, talk, see, write, reproduce itself and be conscious of its existence."
+        </div>
+        <p class="muted ui-text" style="font-size: 0.75em;">— The New York Times, 1958</p>
+    </section>
+    <section>
+        <h3>The Hype Cycle</h3>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-year">1958</div>
+                <div class="timeline-event">Perceptron invented</div>
+            </div>
+            <div class="timeline-item fragment">
+                <div class="timeline-year">1969</div>
+                <div class="timeline-event">Minsky & Papert's critique</div>
+            </div>
+            <div class="timeline-item fragment">
+                <div class="timeline-year">1970s</div>
+                <div class="timeline-event">AI Winter</div>
+            </div>
+            <div class="timeline-item fragment">
+                <div class="timeline-year">1986</div>
+                <div class="timeline-event">Backpropagation revival</div>
+            </div>
+        </div>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Biological Inspiration</h2>
+        <p>A neuron receives signals, processes them, and fires (or doesn't)</p>
+    </section>
+    <section>
+        <h3>The Artificial Neuron</h3>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin: 2em 0; font-family: 'Inter', sans-serif; font-size: 0.8em;">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-weight: 500;">x₁</div>
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-weight: 500;">x₂</div>
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-weight: 500;">x₃</div>
+            </div>
+            <div style="font-size: 1.5em; color: #888;">→</div>
+            <div style="width: 100px; height: 100px; border-radius: 50%; background: #2c2c2c; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1.2em;">Σ</div>
+            <div style="font-size: 1.5em; color: #888;">→</div>
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: #2e7d32; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 500;">ŷ</div>
+        </div>
+        <p class="fragment">Multiply inputs by weights, sum them up, decide.</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Math</h2>
+        <p class="muted">Don't worry, it's just arithmetic</p>
+    </section>
+    <section>
+        <h3>Step 1: Weighted Sum</h3>
+        <div class="formula-box">z = w₁x₁ + w₂x₂ + ... + wₙxₙ + b</div>
+        <p class="fragment" style="margin-top: 1em;">Or in vector form: <span class="math-inline">z = w · x + b</span></p>
+    </section>
+    <section>
+        <h3>Step 2: Decision</h3>
+        <div class="formula-box">ŷ = 1 if z ≥ 0, else 0</div>
+        <p class="fragment" style="margin-top: 1em;">That's it. That's the whole forward pass.</p>
+    </section>
+    <section>
+        <div class="intuition-box">
+            <div class="label">💡 Intuition</div>
+            <p>The dot product <span class="math-inline">w · x</span> measures how "similar" the input is to the weight vector.</p>
+            <p class="fragment" style="margin-top: 0.5em;">High similarity → positive → class 1</p>
+            <p class="fragment">Low similarity → negative → class 0</p>
+        </div>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Geometry</h2>
+        <p>What is the perceptron actually doing?</p>
+    </section>
+    <section>
+        <h3>Finding a Line</h3>
+        <p>In 2D: the perceptron finds a <span class="bold">line</span> that separates two classes</p>
+        <p class="fragment">In 3D: a <span class="bold">plane</span></p>
+        <p class="fragment">In nD: a <span class="bold">hyperplane</span></p>
+    </section>
+    <section>
+        <h3>The Decision Boundary</h3>
+        <div class="formula-box">w · x + b = 0</div>
+        <p class="fragment" style="margin-top: 1em;">Points on one side → class 0</p>
+        <p class="fragment">Points on the other side → class 1</p>
+    </section>
+    <section>
+        <div class="intuition-box">
+            <div class="label">💡 Intuition</div>
+            <p><span class="bold">Weights</span> control the <em>orientation</em> of the line</p>
+            <p class="fragment" style="margin-top: 0.5em;"><span class="bold">Bias</span> controls the <em>position</em> (shifts it up/down)</p>
+        </div>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Learning Algorithm</h2>
+        <p class="muted">How does it find the right weights?</p>
+    </section>
+    <section>
+        <h3>The Update Rule</h3>
+        <div class="formula-box">w = w + η(y - ŷ)x</div>
+        <p class="fragment muted ui-text" style="font-size: 0.8em; margin-top: 1em;">η (eta) = learning rate</p>
+    </section>
+    <section>
+        <h3>In Plain English</h3>
+        <div class="algo-steps">
+            <div class="algo-step fragment"><div class="step-num">1</div><div class="step-content">Pick a training example</div></div>
+            <div class="algo-step fragment"><div class="step-num">2</div><div class="step-content">Make a prediction</div></div>
+            <div class="algo-step fragment"><div class="step-num">3</div><div class="step-content">If wrong: nudge weights toward correct answer</div></div>
+            <div class="algo-step fragment"><div class="step-num">4</div><div class="step-content">If correct: do nothing</div></div>
+            <div class="algo-step fragment"><div class="step-num">5</div><div class="step-content">Repeat until no errors (or max iterations)</div></div>
+        </div>
+    </section>
+    <section>
+        <h3>Why Does This Work?</h3>
+        <p>Predicted 0, actual 1 → <span class="math-inline">y - ŷ = +1</span></p>
+        <p class="fragment">Weights move <span class="green bold">toward</span> the input</p>
+        <p class="fragment" style="margin-top: 1em;">Predicted 1, actual 0 → <span class="math-inline">y - ŷ = -1</span></p>
+        <p class="fragment">Weights move <span class="red bold">away from</span> the input</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Code</h2>
+        <p class="muted">~40 lines of Python</p>
+    </section>
+    <section>
+        <h3>The Perceptron Class</h3>
+        <pre><code class="python">import numpy as np
+
+class Perceptron:
+    def __init__(self, eta=0.01, max_iters=50):
+        self.eta = eta
+        self.max_iters = max_iters
+    
+    def fit(self, X, y):
+        self.weights_ = np.random.normal(0, 0.01, X.shape[1])
+        self.bias_ = 0.0
+        self.errors_ = []
+        
+        for epoch in range(self.max_iters):
+            errors = 0
+            for xi, target in zip(X, y):
+                prediction = self.predict(xi)
+                delta = self.eta * (target - prediction)
+                self.weights_ += delta * xi
+                self.bias_ += delta
+                errors += int(delta != 0)
+            
+            self.errors_.append(errors)
+            if errors == 0:
+                break
+        
+        return self</code></pre>
+    </section>
+    <section>
+        <h3>Prediction Methods</h3>
+        <pre><code class="python">def net_input(self, X):
+    return np.dot(X, self.weights_) + self.bias_
+
+def predict(self, X):
+    return np.where(self.net_input(X) >= 0.0, 1, 0)</code></pre>
+    </section>
+    <section>
+        <h3>Using It</h3>
+        <pre><code class="python">X = ...  # features: sepal length, petal length
+y = ...  # labels: 0 or 1
+
+ppn = Perceptron(eta=0.1, max_iters=10)
+ppn.fit(X, y)
+
+accuracy = np.mean(ppn.predict(X) == y)
+print(f"Accuracy: {accuracy * 100:.1f}%")  # 100%!</code></pre>
+    </section>
+</section>
+
+<section>
+    <h2>Live Demo</h2>
+    <a href="/demo-perceptron/" target="_blank" class="btn">i33ym.cc/perceptron</a>
+    <p class="muted ui-text" style="font-size: 0.8em; margin-top: 1em;">Click to add points, watch it learn</p>
+</section>
+
+<section>
+    <section>
+        <h2>The Limitation</h2>
+        <p>What the perceptron <span class="red bold">cannot</span> do</p>
+    </section>
+    <section>
+        <h3>The XOR Problem</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 60px); gap: 5px; font-family: 'Inter', sans-serif; font-size: 0.8em; margin: 1em auto; width: fit-content;">
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">XOR</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">0</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">0</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #ffebee; color: #c62828; font-weight: 600;">0</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #ffebee; color: #c62828; font-weight: 600;">0</div>
+        </div>
+        <p class="fragment" style="margin-top: 1em;">Try drawing a single line to separate the 0s from the 1s.</p>
+        <p class="fragment red bold">You can't.</p>
+    </section>
+    <section>
+        <h3>Linear Separability</h3>
+        <p>The perceptron only works when data is <span class="bold">linearly separable</span></p>
+        <p class="fragment" style="margin-top: 1em;">This was the critique that killed AI for a decade.</p>
+    </section>
+    <section>
+        <h3>The Solution?</h3>
+        <p>Add more layers.</p>
+        <p class="fragment" style="margin-top: 0.5em;">→ <span class="bold">Multi-Layer Perceptron (MLP)</span></p>
+        <p class="fragment">→ <span class="bold">Neural Networks</span></p>
+        <p class="fragment">→ <span class="bold">Deep Learning</span></p>
+    </section>
+</section>
+
+<section>
+    <h2>What We Learned</h2>
+    <table>
+        <tr><th>Concept</th><th>Perceptron</th><th>Modern Neural Nets</th></tr>
+        <tr><td>Weighted sum</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Activation function</td><td class="check">✓ (step)</td><td class="check">✓ (ReLU, etc)</td></tr>
+        <tr><td>Iterative learning</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Multiple layers</td><td class="cross">✗</td><td class="check">✓</td></tr>
+        <tr><td>Backpropagation</td><td class="cross">✗</td><td class="check">✓</td></tr>
+    </table>
+</section>
+
+<section>
+    <h2>The Takeaway</h2>
+    <p>The perceptron is just:</p>
+    <div class="formula-box fragment">if (dot_product + bias >= 0) return 1</div>
+    <p class="fragment" style="margin-top: 1em;">But it introduced <span class="bold">every key idea</span> we still use today.</p>
+</section>
+
+<section>
+    <h2>Resources</h2>
+    <ul style="list-style: none; max-width: 550px; margin: 0 auto; text-align: left;">
+        <li style="margin-bottom: 1em;">Essay: <a href="/perceptron-essay/">i33ym.cc/perceptron-essay</a></li>
+        <li style="margin-bottom: 1em;">Demo: <a href="/demo-perceptron/">i33ym.cc/perceptron</a></li>
+        <li style="margin-bottom: 1em;">Code: <a href="https://github.com/i33ym/workshop">github.com/i33ym/workshop</a></li>
+        <li>Book: <em>Python Machine Learning</em> by Sebastian Raschka</li>
+    </ul>
+</section>
+
+<section>
+    <h2>Next Time</h2>
+    <p><span class="bold">Adaline & Gradient Descent</span></p>
+    <p class="muted" style="margin-top: 0.5em;">How to optimize with calculus</p>
+</section>
+
+<section>
+    <h1>Questions?</h1>
+    <p class="meta" style="margin-top: 3em;">i33ym.cc</p>
+</section>
+{% endblock %}

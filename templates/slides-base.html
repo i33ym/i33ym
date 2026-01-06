@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Workshop{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --text: #2c2c2c;
+            --muted: #888;
+            --light-muted: #666;
+            --border: #e0e0e0;
+            --code-bg: #f0f0f0;
+            --code-block-bg: #2c2c2c;
+            --tag-bg: #eee;
+            --green: #2e7d32;
+            --red: #c62828;
+            --blue: #1565c0;
+            --orange: #e65100;
+        }
+        
+        .reveal-viewport { background: var(--bg); }
+        .reveal { font-family: 'Source Serif 4', Georgia, serif; font-size: 28px; line-height: 1.7; color: var(--text); }
+        .reveal h1 { font-family: 'Source Serif 4', Georgia, serif; font-size: 2.4em; font-weight: 600; color: var(--text); margin-bottom: 0.4em; line-height: 1.3; }
+        .reveal h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.8em; font-weight: 600; color: var(--text); margin-bottom: 0.6em; line-height: 1.3; }
+        .reveal h3 { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.4em; font-weight: 600; color: var(--text); }
+        .reveal p { margin-bottom: 0.8em; }
+        .reveal .meta { font-family: 'Inter', sans-serif; font-size: 14px; color: var(--muted); }
+        .reveal .ui-text { font-family: 'Inter', sans-serif; }
+        .reveal ul, .reveal ol { margin-left: 1.2em; text-align: left; }
+        .reveal li { margin-bottom: 0.6em; }
+        .reveal a { color: var(--text); text-decoration: underline; }
+        .reveal code { font-family: 'SF Mono', Consolas, monospace; font-size: 0.85em; background: var(--code-bg); padding: 2px 6px; border-radius: 3px; }
+        .reveal pre { width: 100%; font-size: 0.5em; box-shadow: none; border-radius: 5px; margin: 1em 0; }
+        .reveal pre code { font-family: 'SF Mono', Consolas, monospace; padding: 20px; line-height: 1.5; background: var(--code-block-bg); color: #f0f0f0; border-radius: 5px; max-height: 450px; }
+        .reveal table { margin: 0 auto; border-collapse: collapse; font-family: 'Inter', sans-serif; font-size: 0.75em; }
+        .reveal table th { background: var(--text); color: #fff; padding: 12px 20px; font-weight: 500; text-align: left; }
+        .reveal table td { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+        .reveal table tr:nth-child(even) { background: #f5f5f5; }
+
+        .muted { color: var(--muted); }
+        .light-muted { color: var(--light-muted); }
+        .green { color: var(--green); }
+        .red { color: var(--red); }
+        .blue { color: var(--blue); }
+        .orange { color: var(--orange); }
+        .bold { font-weight: 600; }
+        .check { color: var(--green); font-weight: bold; }
+        .cross { color: var(--red); font-weight: bold; }
+        .tag { display: inline-block; font-family: 'Inter', sans-serif; font-size: 12px; color: #666; background: var(--tag-bg); padding: 2px 8px; border-radius: 3px; }
+        .big-num { font-size: 4em; font-weight: 600; color: var(--text); line-height: 1.2; }
+        .year { font-size: 5em; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 0.2em; }
+        .quote { font-style: italic; color: var(--light-muted); border-left: 3px solid var(--border); padding-left: 20px; margin: 1.5em auto; max-width: 80%; text-align: left; }
+        .box { background: #fff; border: 1px solid var(--border); border-radius: 5px; padding: 25px; margin: 1em auto; max-width: 85%; }
+        .formula-box { background: #fff; border: 2px solid var(--text); border-radius: 8px; padding: 30px 40px; margin: 1.5em auto; display: inline-block; font-size: 1.3em; }
+        .intuition-box { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 20px 25px; margin: 1em auto; max-width: 85%; text-align: left; }
+        .intuition-box .label { font-family: 'Inter', sans-serif; font-size: 0.7em; font-weight: 600; color: #f57c00; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .math-inline { font-family: 'SF Mono', Consolas, monospace; background: var(--code-bg); padding: 2px 8px; border-radius: 3px; font-size: 0.9em; }
+        .pipeline { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 1.5em 0; font-family: 'Inter', sans-serif; font-size: 0.7em; }
+        .pipeline-step { background: var(--text); color: #fff; padding: 10px 16px; border-radius: 5px; font-weight: 500; }
+        .pipeline-arrow { color: var(--muted); font-size: 1.2em; }
+        .algo-steps { display: flex; flex-direction: column; gap: 15px; text-align: left; max-width: 700px; margin: 0 auto; }
+        .algo-step { display: flex; align-items: flex-start; gap: 15px; }
+        .step-num { width: 36px; height: 36px; background: var(--text); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-weight: 600; flex-shrink: 0; }
+        .step-content { padding-top: 5px; }
+        .timeline { display: flex; justify-content: center; gap: 30px; margin: 2em 0; font-family: 'Inter', sans-serif; font-size: 0.7em; }
+        .timeline-item { text-align: center; max-width: 150px; }
+        .timeline-year { font-weight: 600; font-size: 1.3em; color: var(--text); margin-bottom: 5px; }
+        .timeline-event { color: var(--muted); }
+        .two-col { display: flex; gap: 40px; align-items: flex-start; }
+        .two-col > * { flex: 1; }
+        .score-good { display: inline-block; font-family: 'Inter', sans-serif; font-size: 0.9em; background: #e8f5e9; color: var(--green); padding: 3px 10px; border-radius: 3px; font-weight: 500; }
+        .score-bad { display: inline-block; font-family: 'Inter', sans-serif; font-size: 0.9em; background: #ffebee; color: var(--red); padding: 3px 10px; border-radius: 3px; font-weight: 500; }
+        .score-mid { display: inline-block; font-family: 'Inter', sans-serif; font-size: 0.9em; background: #fff3e0; color: var(--orange); padding: 3px 10px; border-radius: 3px; font-weight: 500; }
+        .tech-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 1.5em 0; }
+        .tech-item { font-family: 'Inter', sans-serif; font-size: 0.7em; background: var(--code-bg); padding: 8px 16px; border-radius: 5px; font-weight: 500; }
+        .btn { display: inline-block; font-family: 'Inter', sans-serif; font-size: 0.8em; background: var(--text); color: #fff; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: 500; margin-top: 1em; }
+        .btn:hover { background: #444; color: #fff; }
+        .debug-box { background: var(--code-block-bg); color: #d4d4d4; padding: 20px; border-radius: 5px; font-family: 'SF Mono', Consolas, monospace; font-size: 0.6em; text-align: left; line-height: 1.8; }
+        .debug-box .label { color: #888; }
+        .debug-box .num { color: #b5cea8; }
+        .debug-box .pass { color: #4ec9b0; }
+        .debug-box .fail { color: #f14c4c; }
+
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            {% block slides %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            transition: 'fade',
+            transitionSpeed: 'fast',
+            plugins: [RevealHighlight],
+            width: 1100,
+            height: 700,
+            margin: 0.12,
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

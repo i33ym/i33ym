@@ -1,0 +1,273 @@
+{% extends "demo-base.html" %}
+
+{% block demo_title %}Perceptron Playground{% endblock %}
+{% block demo_subtitle %}Click to add points. Watch the perceptron learn to separate them.{% endblock %}
+{% block back_link %}/slides-perceptron/{% endblock %}
+{% block back_text %}back to slides{% endblock %}
+
+{% block demo_content %}
+<div class="demo-grid">
+    <div class="canvas-wrapper">
+        <div class="canvas-container">
+            <canvas id="perceptronCanvas"></canvas>
+        </div>
+        <div class="canvas-hint">
+            <span><div class="dot dot-red"></div> Left click = Class 0</span>
+            <span><div class="dot dot-blue"></div> Right click = Class 1</span>
+        </div>
+    </div>
+
+    <div class="controls-panel">
+        <div class="panel-section">
+            <div class="panel-title">Parameters</div>
+            <div class="slider-row">
+                <label>Learning rate (η): <span class="slider-value" id="etaValue">0.1</span></label>
+                <input type="range" id="etaSlider" min="0.01" max="1" step="0.01" value="0.1">
+            </div>
+            <div class="slider-row">
+                <label>Speed: <span class="slider-value" id="speedValue">Medium</span></label>
+                <input type="range" id="speedSlider" min="1" max="3" step="1" value="2">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">Actions</div>
+            <div class="btn-group">
+                <button class="btn btn-primary" id="trainBtn">▶ Train</button>
+                <button class="btn btn-secondary" id="stepBtn">Step Once</button>
+                <button class="btn btn-secondary" id="resetWeightsBtn">Reset Weights</button>
+                <button class="btn btn-danger" id="clearBtn">Clear All</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">Statistics</div>
+            <div class="stats-grid">
+                <div class="stat-box"><div class="stat-value" id="epochStat">0</div><div class="stat-label">Epoch</div></div>
+                <div class="stat-box"><div class="stat-value" id="errorsStat">0</div><div class="stat-label">Errors</div></div>
+                <div class="stat-box"><div class="stat-value" id="pointsStat">0</div><div class="stat-label">Points</div></div>
+                <div class="stat-box"><div class="stat-value" id="accuracyStat">—</div><div class="stat-label">Accuracy</div></div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">Weights</div>
+            <div class="code-display" id="weightsDisplay">
+                <div class="code-line"><span>w₁:</span><span>0.000</span></div>
+                <div class="code-line"><span>w₂:</span><span>0.000</span></div>
+                <div class="code-line"><span>b:</span><span>0.000</span></div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Decision boundary</div>
+                <div class="info-content" id="equationDisplay">0.00x₁ + 0.00x₂ + 0.00 = 0</div>
+            </div>
+        </div>
+
+        <div id="statusIndicator" class="status-indicator status-idle">
+            <div class="status-dot"></div>
+            <span>Add some points to start</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block demo_script %}
+<script>
+const canvas = document.getElementById('perceptronCanvas');
+const ctx = canvas.getContext('2d');
+
+function setupCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+}
+
+let points = [];
+let weights = [0, 0];
+let bias = 0;
+let epoch = 0;
+let isTraining = false;
+let trainingInterval = null;
+
+const etaSlider = document.getElementById('etaSlider');
+const etaValue = document.getElementById('etaValue');
+const speedSlider = document.getElementById('speedSlider');
+const speedValue = document.getElementById('speedValue');
+const trainBtn = document.getElementById('trainBtn');
+const stepBtn = document.getElementById('stepBtn');
+const resetWeightsBtn = document.getElementById('resetWeightsBtn');
+const clearBtn = document.getElementById('clearBtn');
+const epochStat = document.getElementById('epochStat');
+const errorsStat = document.getElementById('errorsStat');
+const pointsStat = document.getElementById('pointsStat');
+const accuracyStat = document.getElementById('accuracyStat');
+const weightsDisplay = document.getElementById('weightsDisplay');
+const equationDisplay = document.getElementById('equationDisplay');
+const statusIndicator = document.getElementById('statusIndicator');
+
+let eta = 0.1;
+let speed = 200;
+const speedMap = { 1: 500, 2: 200, 3: 50 };
+const speedLabels = { 1: 'Slow', 2: 'Medium', 3: 'Fast' };
+
+setupCanvas();
+window.addEventListener('resize', () => { setupCanvas(); draw(); });
+
+etaSlider.addEventListener('input', () => { eta = parseFloat(etaSlider.value); etaValue.textContent = eta.toFixed(2); });
+speedSlider.addEventListener('input', () => { const s = parseInt(speedSlider.value); speed = speedMap[s]; speedValue.textContent = speedLabels[s]; if (isTraining) { stopTraining(); startTraining(); } });
+canvas.addEventListener('click', (e) => addPoint(e, 0));
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); addPoint(e, 1); });
+trainBtn.addEventListener('click', () => { if (isTraining) { stopTraining(); } else { startTraining(); } });
+stepBtn.addEventListener('click', trainEpoch);
+resetWeightsBtn.addEventListener('click', resetWeights);
+clearBtn.addEventListener('click', clearAll);
+
+function addPoint(e, label) {
+    if (isTraining) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    points.push({ x, y, label });
+    updateStats();
+    draw();
+    if (points.length >= 2) setStatus('idle', 'Ready to train');
+}
+
+function resetWeights() {
+    weights = [Math.random() * 0.02 - 0.01, Math.random() * 0.02 - 0.01];
+    bias = 0;
+    epoch = 0;
+    updateStats();
+    updateWeightsDisplay();
+    draw();
+    setStatus('idle', 'Weights reset');
+}
+
+function clearAll() {
+    stopTraining();
+    points = [];
+    weights = [0, 0];
+    bias = 0;
+    epoch = 0;
+    updateStats();
+    updateWeightsDisplay();
+    draw();
+    setStatus('idle', 'Add some points to start');
+}
+
+function predict(x, y) {
+    const z = weights[0] * x + weights[1] * y + bias;
+    return z >= 0 ? 1 : 0;
+}
+
+function trainEpoch() {
+    if (points.length < 2) return;
+    let errors = 0;
+    const shuffled = [...points].sort(() => Math.random() - 0.5);
+    for (const p of shuffled) {
+        const pred = predict(p.x, p.y);
+        const delta = eta * (p.label - pred);
+        if (delta !== 0) {
+            weights[0] += delta * p.x;
+            weights[1] += delta * p.y;
+            bias += delta;
+            errors++;
+        }
+    }
+    epoch++;
+    updateStats(errors);
+    updateWeightsDisplay();
+    draw();
+    return errors;
+}
+
+function startTraining() {
+    if (points.length < 2) { setStatus('idle', 'Add at least 2 points'); return; }
+    isTraining = true;
+    trainBtn.textContent = '⏸ Pause';
+    setStatus('running', 'Training...');
+    trainingInterval = setInterval(() => {
+        const errors = trainEpoch();
+        if (errors === 0) { stopTraining(); setStatus('success', 'Converged!'); }
+        else if (epoch >= 1000) { stopTraining(); setStatus('error', 'Max epochs reached'); }
+    }, speed);
+}
+
+function stopTraining() {
+    isTraining = false;
+    trainBtn.textContent = '▶ Train';
+    if (trainingInterval) { clearInterval(trainingInterval); trainingInterval = null; }
+}
+
+function updateStats(errors = null) {
+    epochStat.textContent = epoch;
+    pointsStat.textContent = points.length;
+    if (errors !== null) errorsStat.textContent = errors;
+    if (points.length > 0) {
+        let correct = 0;
+        for (const p of points) { if (predict(p.x, p.y) === p.label) correct++; }
+        accuracyStat.textContent = (correct / points.length * 100).toFixed(0) + '%';
+    } else { accuracyStat.textContent = '—'; }
+}
+
+function updateWeightsDisplay() {
+    weightsDisplay.innerHTML = `<div class="code-line"><span>w₁:</span><span>${weights[0].toFixed(3)}</span></div><div class="code-line"><span>w₂:</span><span>${weights[1].toFixed(3)}</span></div><div class="code-line"><span>b:</span><span>${bias.toFixed(3)}</span></div>`;
+    equationDisplay.textContent = `${weights[0].toFixed(2)}x₁ + ${weights[1].toFixed(2)}x₂ + ${bias.toFixed(2)} = 0`;
+}
+
+function draw() {
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, w, h);
+
+    if (weights[0] !== 0 || weights[1] !== 0 || bias !== 0) {
+        const imageData = ctx.createImageData(w, h);
+        const data = imageData.data;
+        for (let py = 0; py < h; py++) {
+            for (let px = 0; px < w; px++) {
+                const x = px / w;
+                const y = py / h;
+                const pred = predict(x, y);
+                const idx = (py * w + px) * 4;
+                if (pred === 0) { data[idx] = 255; data[idx + 1] = 245; data[idx + 2] = 245; data[idx + 3] = 255; }
+                else { data[idx] = 245; data[idx + 1] = 248; data[idx + 2] = 255; data[idx + 3] = 255; }
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    if (weights[1] !== 0) {
+        const x1 = 0, y1 = -(weights[0] * 0 + bias) / weights[1];
+        const x2 = 1, y2 = -(weights[0] * 1 + bias) / weights[1];
+        ctx.beginPath(); ctx.moveTo(x1 * w, y1 * h); ctx.lineTo(x2 * w, y2 * h);
+        ctx.strokeStyle = '#2c2c2c'; ctx.lineWidth = 2; ctx.stroke();
+    } else if (weights[0] !== 0) {
+        const x = -bias / weights[0];
+        ctx.beginPath(); ctx.moveTo(x * w, 0); ctx.lineTo(x * w, h);
+        ctx.strokeStyle = '#2c2c2c'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    for (const p of points) {
+        const px = p.x * w, py = p.y * h;
+        const correct = predict(p.x, p.y) === p.label;
+        ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2);
+        ctx.fillStyle = p.label === 0 ? '#c62828' : '#1565c0'; ctx.fill();
+        if (!correct) { ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2); ctx.strokeStyle = '#ffd600'; ctx.lineWidth = 3; ctx.stroke(); }
+    }
+}
+
+function setStatus(type, message) {
+    statusIndicator.className = `status-indicator status-${type}`;
+    statusIndicator.innerHTML = `<div class="status-dot"></div><span>${message}</span>`;
+}
+
+draw();
+updateWeightsDisplay();
+</script>
+{% endblock %}
