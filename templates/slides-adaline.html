@@ -1,0 +1,405 @@
+{% extends "slides-base.html" %}
+
+{% block title %}Adaline and Gradient Descent{% endblock %}
+
+{% block slides %}
+<section>
+    <h1>Adaline and Gradient Descent</h1>
+    <p>The Algorithm Behind All Deep Learning</p>
+    <p class="meta" style="margin-top: 2em;">January 2026</p>
+</section>
+
+<section>
+    <section>
+        <h2>Recap: The Perceptron</h2>
+        <p>Last time we learned:</p>
+        <p class="fragment"><span class="math-inline">z = w * x + b</span></p>
+        <p class="fragment"><span class="math-inline">y = 1 if z >= 0 else 0</span></p>
+        <p class="fragment" style="margin-top: 1em;">Update rule: <span class="math-inline">w = w + eta * (y - y_hat) * x</span></p>
+    </section>
+    <section>
+        <h3>The Perceptron Works</h3>
+        <p>Converges on linearly separable data</p>
+        <p class="fragment">Simple and elegant</p>
+        <p class="fragment">But there is a problem...</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Problem with Perceptron</h2>
+        <p class="red bold">No measure of "how wrong"</p>
+    </section>
+    <section>
+        <h3>Binary Feedback Only</h3>
+        <p>Perceptron only knows: <span class="bold">right</span> or <span class="bold">wrong</span></p>
+        <p class="fragment" style="margin-top: 1em;">Missing by 0.001? <span class="red">Wrong</span></p>
+        <p class="fragment">Missing by 1000? <span class="red">Wrong</span></p>
+        <p class="fragment" style="margin-top: 1em;">Same update either way</p>
+    </section>
+    <section>
+        <h3>The Step Function Problem</h3>
+        <div class="intuition-box">
+            <div class="label">Intuition</div>
+            <p>Imagine learning to throw darts blindfolded.</p>
+            <p style="margin-top: 0.5em;">Someone only tells you "hit" or "miss" - never "a little to the left".</p>
+        </div>
+    </section>
+    <section>
+        <h3>What We Need</h3>
+        <p>A way to measure <span class="bold">how far</span> we are from the target</p>
+        <p class="fragment" style="margin-top: 1em;">Not just direction, but <span class="bold">magnitude</span></p>
+        <p class="fragment">A <span class="bold">continuous</span> measure of error</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <div class="year">1960</div>
+        <h2>Adaline</h2>
+        <p>Adaptive Linear Neuron</p>
+        <p class="muted ui-text" style="font-size: 0.8em;">Bernard Widrow and Ted Hoff, Stanford</p>
+    </section>
+    <section>
+        <h3>The Key Insight</h3>
+        <p>Update weights based on the <span class="bold">continuous output</span></p>
+        <p class="fragment" style="margin-top: 1em;">Not the thresholded prediction</p>
+    </section>
+    <section>
+        <h3>Perceptron vs Adaline</h3>
+        <table>
+            <tr><th></th><th>Perceptron</th><th>Adaline</th></tr>
+            <tr><td>Computes</td><td>z = w * x + b</td><td>z = w * x + b</td></tr>
+            <tr><td>Updates on</td><td class="red">step(z)</td><td class="green">z directly</td></tr>
+            <tr><td>Error signal</td><td>Binary</td><td>Continuous</td></tr>
+        </table>
+    </section>
+    <section>
+        <h3>The Architecture</h3>
+        <div class="pipeline">
+            <div class="pipeline-step">Inputs x</div>
+            <div class="pipeline-arrow">-></div>
+            <div class="pipeline-step">Net input z</div>
+            <div class="pipeline-arrow">-></div>
+            <div class="pipeline-step" style="background: #1565c0;">Compare to y</div>
+            <div class="pipeline-arrow">-></div>
+            <div class="pipeline-step">Update weights</div>
+        </div>
+        <p class="fragment" style="margin-top: 1em;">Threshold only used for final prediction, not learning</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Loss Function</h2>
+        <p>Measuring "how wrong" mathematically</p>
+    </section>
+    <section>
+        <h3>Mean Squared Error (MSE)</h3>
+        <div class="formula-box">L(w) = (1/n) * sum((y - z)^2)</div>
+        <p class="fragment" style="margin-top: 1em;">Square the errors, take the average</p>
+    </section>
+    <section>
+        <h3>Why Squared Error?</h3>
+        <p>Positive and negative errors do not cancel out</p>
+        <p class="fragment">Larger errors are penalized more heavily</p>
+        <p class="fragment">Differentiable everywhere</p>
+        <p class="fragment" style="margin-top: 1em;">That last one is crucial...</p>
+    </section>
+    <section>
+        <h3>The Loss Landscape</h3>
+        <p>Imagine a bowl-shaped surface</p>
+        <p class="fragment">Height = loss (error)</p>
+        <p class="fragment">Position = weight values</p>
+        <p class="fragment" style="margin-top: 1em;">Goal: find the lowest point</p>
+    </section>
+    <section>
+        <h3>Why Convex Matters</h3>
+        <p>MSE with linear model = convex surface</p>
+        <p class="fragment">Only one minimum (global)</p>
+        <p class="fragment">No local minima to get stuck in</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>Gradient Descent</h2>
+        <p>The algorithm that powers all of deep learning</p>
+    </section>
+    <section>
+        <h3>The Intuition</h3>
+        <div class="intuition-box">
+            <div class="label">Intuition</div>
+            <p>You are blindfolded on a hilly landscape.</p>
+            <p style="margin-top: 0.5em;">To find the lowest point, feel which way is downhill and step that direction.</p>
+            <p style="margin-top: 0.5em;">Repeat until you stop going down.</p>
+        </div>
+    </section>
+    <section>
+        <h3>The Gradient</h3>
+        <p>The gradient tells us which direction is "uphill"</p>
+        <p class="fragment" style="margin-top: 1em;">It is the vector of partial derivatives</p>
+        <p class="fragment"><span class="math-inline">gradient = [dL/dw1, dL/dw2, ..., dL/db]</span></p>
+    </section>
+    <section>
+        <h3>The Update Rule</h3>
+        <div class="formula-box">w = w - eta * gradient</div>
+        <p class="fragment" style="margin-top: 1em;">Move in the <span class="bold">opposite</span> direction of the gradient</p>
+        <p class="fragment">Opposite because gradient points uphill</p>
+    </section>
+    <section>
+        <h3>Computing the Gradient</h3>
+        <p>For MSE loss with linear activation:</p>
+        <div class="formula-box fragment">dL/dw = -(2/n) * sum((y - z) * x)</div>
+        <p class="fragment" style="margin-top: 1em;">Error times input, averaged over all samples</p>
+    </section>
+    <section>
+        <h3>The Adaline Update</h3>
+        <pre><code class="python">for each epoch:
+    output = X.dot(w) + b          # net input for all samples
+    errors = y - output            # continuous errors
+    
+    w += eta * (2/n) * X.T.dot(errors)   # update weights
+    b += eta * (2/n) * errors.sum()      # update bias</code></pre>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Learning Rate</h2>
+        <p>The most important hyperparameter</p>
+    </section>
+    <section>
+        <h3>What eta Controls</h3>
+        <p>Step size in weight space</p>
+        <p class="fragment">How much to move each update</p>
+    </section>
+    <section>
+        <h3>Too Large</h3>
+        <p>Overshoot the minimum</p>
+        <p class="fragment">Bounce back and forth</p>
+        <p class="fragment">May diverge to infinity</p>
+        <p class="fragment red bold" style="margin-top: 1em;">Loss explodes</p>
+    </section>
+    <section>
+        <h3>Too Small</h3>
+        <p>Tiny steps toward minimum</p>
+        <p class="fragment">Takes forever to converge</p>
+        <p class="fragment">May stop before reaching minimum</p>
+        <p class="fragment orange bold" style="margin-top: 1em;">Training is too slow</p>
+    </section>
+    <section>
+        <h3>Just Right</h3>
+        <p>Steady descent toward minimum</p>
+        <p class="fragment">Converges in reasonable time</p>
+        <p class="fragment green bold" style="margin-top: 1em;">Usually found by trial and error</p>
+    </section>
+    <section>
+        <h3>Typical Values</h3>
+        <p>Start with 0.01 or 0.1</p>
+        <p class="fragment">If loss explodes, reduce by 10x</p>
+        <p class="fragment">If too slow, increase by 10x</p>
+        <p class="fragment" style="margin-top: 1em;">Modern optimizers adapt this automatically (Adam, RMSprop)</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>Feature Scaling</h2>
+        <p>Why preprocessing matters</p>
+    </section>
+    <section>
+        <h3>The Problem</h3>
+        <p>Features on different scales cause problems</p>
+        <p class="fragment" style="margin-top: 1em;">Age: 0-100</p>
+        <p class="fragment">Income: 0-1,000,000</p>
+        <p class="fragment" style="margin-top: 1em;">Gradient descent struggles with elongated loss surfaces</p>
+    </section>
+    <section>
+        <h3>Standardization</h3>
+        <div class="formula-box">x' = (x - mean) / std</div>
+        <p class="fragment" style="margin-top: 1em;">Centers data at 0, scales to unit variance</p>
+        <p class="fragment">Each feature now has mean=0, std=1</p>
+    </section>
+    <section>
+        <h3>Why It Helps</h3>
+        <p>Loss surface becomes more "spherical"</p>
+        <p class="fragment">Gradient points more directly to minimum</p>
+        <p class="fragment">Same learning rate works for all features</p>
+        <p class="fragment green bold" style="margin-top: 1em;">Converges much faster</p>
+    </section>
+    <section>
+        <h3>In Code</h3>
+        <pre><code class="python">X_std = (X - X.mean(axis=0)) / X.std(axis=0)</code></pre>
+        <p class="fragment" style="margin-top: 1em;">Always standardize before gradient descent</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>Batch vs Stochastic</h2>
+        <p>Two flavors of gradient descent</p>
+    </section>
+    <section>
+        <h3>Batch Gradient Descent</h3>
+        <p>Compute gradient over <span class="bold">all</span> training samples</p>
+        <p class="fragment" style="margin-top: 1em;">One update per epoch</p>
+        <p class="fragment">Smooth convergence</p>
+        <p class="fragment">Expensive for large datasets</p>
+    </section>
+    <section>
+        <h3>Stochastic Gradient Descent (SGD)</h3>
+        <p>Compute gradient for <span class="bold">one</span> sample at a time</p>
+        <p class="fragment" style="margin-top: 1em;">n updates per epoch</p>
+        <p class="fragment">Noisy but fast</p>
+        <p class="fragment">Can escape shallow local minima</p>
+    </section>
+    <section>
+        <h3>Mini-Batch</h3>
+        <p>Best of both worlds</p>
+        <p class="fragment">Compute gradient over small batches (32, 64, 128)</p>
+        <p class="fragment">This is what everyone uses in practice</p>
+    </section>
+    <section>
+        <h3>Online Learning</h3>
+        <p>SGD enables learning from streaming data</p>
+        <p class="fragment" style="margin-top: 1em;">Update model as new samples arrive</p>
+        <p class="fragment">No need to store entire dataset</p>
+        <p class="fragment">Adapts to changing distributions</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Code</h2>
+        <p>AdalineGD implementation</p>
+    </section>
+    <section>
+        <h3>The Class Structure</h3>
+        <pre><code class="python">class AdalineGD:
+    def __init__(self, eta=0.01, n_iter=50, random_state=1):
+        self.eta = eta
+        self.n_iter = n_iter
+        self.random_state = random_state
+    
+    def fit(self, X, y):
+        rgen = np.random.RandomState(self.random_state)
+        self.w_ = rgen.normal(loc=0.0, scale=0.01, size=X.shape[1])
+        self.b_ = np.float64(0.)
+        self.losses_ = []
+        
+        # training loop on next slide...</code></pre>
+    </section>
+    <section>
+        <h3>The Training Loop</h3>
+        <pre><code class="python">for i in range(self.n_iter):
+    net_input = self.net_input(X)
+    output = self.activation(net_input)
+    errors = (y - output)
+    
+    self.w_ += self.eta * 2.0 * X.T.dot(errors) / X.shape[0]
+    self.b_ += self.eta * 2.0 * errors.mean()
+    
+    loss = (errors**2).mean()
+    self.losses_.append(loss)
+    
+return self</code></pre>
+    </section>
+    <section>
+        <h3>Helper Methods</h3>
+        <pre><code class="python">def net_input(self, X):
+    return np.dot(X, self.w_) + self.b_
+
+def activation(self, X):
+    return X  # identity function
+
+def predict(self, X):
+    return np.where(self.activation(self.net_input(X)) >= 0.5, 1, 0)</code></pre>
+    </section>
+    <section>
+        <h3>Training on Iris</h3>
+        <pre><code class="python"># Standardize features
+X_std = (X - X.mean(axis=0)) / X.std(axis=0)
+
+# Train Adaline
+ada = AdalineGD(eta=0.5, n_iter=20)
+ada.fit(X_std, y)
+
+# Check convergence
+plt.plot(range(1, len(ada.losses_) + 1), ada.losses_)
+plt.xlabel('Epochs')
+plt.ylabel('MSE')</code></pre>
+    </section>
+</section>
+
+<section>
+    <h2>Live Demo</h2>
+    <a href="/demo-adaline/" target="_blank" class="btn">Open Interactive Demo</a>
+    <p class="muted ui-text" style="font-size: 0.8em; margin-top: 1em;">Compare Perceptron and Adaline side by side</p>
+</section>
+
+<section>
+    <section>
+        <h2>Why This Matters</h2>
+        <p>Adaline is not just historical</p>
+    </section>
+    <section>
+        <h3>The Foundation</h3>
+        <p>Gradient descent is how we train <span class="bold">all</span> neural networks</p>
+        <p class="fragment" style="margin-top: 1em;">GPT? Gradient descent.</p>
+        <p class="fragment">Image recognition? Gradient descent.</p>
+        <p class="fragment">Self-driving cars? Gradient descent.</p>
+    </section>
+    <section>
+        <h3>What Changes in Deep Learning</h3>
+        <table>
+            <tr><th>Adaline</th><th>Deep Networks</th></tr>
+            <tr><td>One layer</td><td>Many layers</td></tr>
+            <tr><td>Linear activation</td><td>Non-linear (ReLU, etc)</td></tr>
+            <tr><td>Direct gradient</td><td>Backpropagation</td></tr>
+            <tr><td>MSE loss</td><td>Cross-entropy, etc</td></tr>
+        </table>
+        <p class="fragment" style="margin-top: 1em;">But the core algorithm is the same</p>
+    </section>
+    <section>
+        <h3>The Key Ideas</h3>
+        <p>1. Define a <span class="bold">loss function</span> that measures error</p>
+        <p class="fragment">2. Compute the <span class="bold">gradient</span> of loss w.r.t. weights</p>
+        <p class="fragment">3. Update weights in the <span class="bold">opposite direction</span></p>
+        <p class="fragment">4. <span class="bold">Repeat</span> until convergence</p>
+    </section>
+</section>
+
+<section>
+    <h2>Summary</h2>
+    <table>
+        <tr><th>Concept</th><th>What It Does</th></tr>
+        <tr><td>MSE Loss</td><td>Measures how wrong we are (continuously)</td></tr>
+        <tr><td>Gradient</td><td>Points uphill in weight space</td></tr>
+        <tr><td>Gradient Descent</td><td>Steps downhill to minimize loss</td></tr>
+        <tr><td>Learning Rate</td><td>Controls step size</td></tr>
+        <tr><td>Standardization</td><td>Makes optimization easier</td></tr>
+        <tr><td>SGD</td><td>Scales to large datasets</td></tr>
+    </table>
+</section>
+
+<section>
+    <h2>Resources</h2>
+    <ul style="list-style: none; max-width: 550px; margin: 0 auto; text-align: left;">
+        <li style="margin-bottom: 1em;">Essay: <a href="/the-adaline/">i33ym.cc/the-adaline</a></li>
+        <li style="margin-bottom: 1em;">Demo: <a href="/demo-adaline/">i33ym.cc/demo-adaline</a></li>
+        <li style="margin-bottom: 1em;">Code: <a href="https://github.com/i33ym/workshop">github.com/i33ym/workshop</a></li>
+    </ul>
+</section>
+
+<section>
+    <h2>Next Time</h2>
+    <p><span class="bold">Multi-Layer Perceptrons</span></p>
+    <p class="muted" style="margin-top: 0.5em;">Breaking the linear barrier with hidden layers</p>
+</section>
+
+<section>
+    <h1>Questions?</h1>
+    <p class="meta" style="margin-top: 3em;">i33ym.cc</p>
+</section>
+{% endblock %}
