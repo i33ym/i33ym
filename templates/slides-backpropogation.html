@@ -1,0 +1,424 @@
+{% extends "slides-base.html" %}
+
+{% block title %}Multilayer Perceptrons and Backpropagation{% endblock %}
+
+{% block slides %}
+<section>
+    <h1>Multilayer Perceptrons</h1>
+    <p>Breaking the Linear Barrier</p>
+    <p class="meta" style="margin-top: 2em;">January 2026</p>
+</section>
+
+<section>
+    <section>
+        <h2>Recap: What We Have</h2>
+        <p><span class="bold">Perceptron</span>: binary threshold, learns by error correction</p>
+        <p class="fragment" style="margin-top: 0.5em;"><span class="bold">Adaline</span>: continuous output, learns by gradient descent</p>
+        <p class="fragment" style="margin-top: 1em;">Both are single-layer, linear classifiers</p>
+    </section>
+    <section>
+        <h3>The Limitation</h3>
+        <p>A single neuron can only draw <span class="bold">one line</span></p>
+        <p class="fragment" style="margin-top: 1em;">Some problems cannot be solved with one line</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The XOR Problem</h2>
+        <p>The pattern that killed neural networks (temporarily)</p>
+    </section>
+    <section>
+        <h3>Exclusive OR</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 60px); gap: 5px; font-family: 'Inter', sans-serif; font-size: 0.8em; margin: 1em auto; width: fit-content;">
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">XOR</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">0</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">0</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #ffebee; color: #c62828; font-weight: 600;">0</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #f0f0f0; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-weight: 600;">1</div>
+            <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: #ffebee; color: #c62828; font-weight: 600;">0</div>
+        </div>
+        <p class="fragment">Output is 1 when inputs <span class="bold">differ</span></p>
+        <p class="fragment">Output is 0 when inputs <span class="bold">match</span></p>
+    </section>
+    <section>
+        <h3>Why It Is Impossible</h3>
+        <p>Plot the four points:</p>
+        <p class="fragment">(0,0) → <span class="red">0</span> &nbsp;&nbsp; (0,1) → <span class="green">1</span></p>
+        <p class="fragment">(1,0) → <span class="green">1</span> &nbsp;&nbsp; (1,1) → <span class="red">0</span></p>
+        <p class="fragment" style="margin-top: 1em;">The 1s are on opposite corners</p>
+        <p class="fragment red bold">No single line can separate them</p>
+    </section>
+    <section>
+        <h3>The AI Winter</h3>
+        <p>1969: Minsky & Papert prove this limitation</p>
+        <p class="fragment" style="margin-top: 0.5em;">Funding disappears. Research stops.</p>
+        <p class="fragment" style="margin-top: 1em;">But the solution was known all along...</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Solution</h2>
+        <p class="bold" style="font-size: 1.5em;">Add more layers</p>
+    </section>
+    <section>
+        <h3>The Key Insight</h3>
+        <div class="intuition-box">
+            <div class="label">Intuition</div>
+            <p>One neuron draws one line.</p>
+            <p style="margin-top: 0.5em;">Multiple neurons draw multiple lines.</p>
+            <p style="margin-top: 0.5em;">Combined, they can carve out <span class="bold">any region</span>.</p>
+        </div>
+    </section>
+    <section>
+        <h3>Hidden Layers</h3>
+        <p>Layers between input and output</p>
+        <p class="fragment" style="margin-top: 0.5em;">They learn <span class="bold">intermediate representations</span></p>
+        <p class="fragment">Features that make the problem linearly separable</p>
+    </section>
+    <section>
+        <h3>Solving XOR</h3>
+        <p>Hidden neuron 1: draws line separating (0,0) from others</p>
+        <p class="fragment">Hidden neuron 2: draws line separating (1,1) from others</p>
+        <p class="fragment" style="margin-top: 1em;">Output neuron: combines these to get XOR</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>MLP Architecture</h2>
+        <p>The structure of a multilayer perceptron</p>
+    </section>
+    <section>
+        <h3>Three Types of Layers</h3>
+        <p><span class="blue bold">Input layer</span>: receives the features</p>
+        <p class="fragment"><span style="color: #7b1fa2;" class="bold">Hidden layer(s)</span>: learns representations</p>
+        <p class="fragment"><span class="orange bold">Output layer</span>: produces predictions</p>
+    </section>
+    <section>
+        <h3>Fully Connected</h3>
+        <p>Every neuron connects to every neuron in the next layer</p>
+        <p class="fragment" style="margin-top: 1em;">Also called "dense" layers</p>
+    </section>
+    <section>
+        <h3>Parameter Count</h3>
+        <p>For a network with layers of size [2, 4, 1]:</p>
+        <p class="fragment" style="margin-top: 0.5em;">Input → Hidden: 2 × 4 + 4 = <span class="bold">12</span> params</p>
+        <p class="fragment">Hidden → Output: 4 × 1 + 1 = <span class="bold">5</span> params</p>
+        <p class="fragment" style="margin-top: 0.5em;">Total: <span class="bold">17</span> parameters</p>
+        <p class="fragment muted" style="margin-top: 1em; font-size: 0.8em;">MNIST (784 → 50 → 10): 39,760 parameters</p>
+    </section>
+    <section>
+        <h3>Activation Functions</h3>
+        <p>Non-linearity is essential</p>
+        <p class="fragment" style="margin-top: 0.5em;">Without it, multiple layers collapse to one</p>
+        <p class="fragment" style="margin-top: 1em;">Common choices:</p>
+        <p class="fragment"><span class="math-inline">sigmoid(z) = 1 / (1 + e^(-z))</span></p>
+        <p class="fragment"><span class="math-inline">tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z))</span></p>
+        <p class="fragment"><span class="math-inline">ReLU(z) = max(0, z)</span></p>
+    </section>
+    <section>
+        <h3>Why Sigmoid?</h3>
+        <p>Smooth, differentiable everywhere</p>
+        <p class="fragment">Output bounded between 0 and 1</p>
+        <p class="fragment">Derivative has a nice form: <span class="math-inline">σ'(z) = σ(z)(1 - σ(z))</span></p>
+        <p class="fragment muted" style="margin-top: 1em; font-size: 0.8em;">Modern networks prefer ReLU, but sigmoid is great for learning</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>Forward Propagation</h2>
+        <p>How data flows through the network</p>
+    </section>
+    <section>
+        <h3>Layer by Layer</h3>
+        <div class="pipeline">
+            <div class="pipeline-step">Input x</div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step">z⁽ʰ⁾ = xW⁽ʰ⁾ᵀ + b⁽ʰ⁾</div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step">a⁽ʰ⁾ = σ(z⁽ʰ⁾)</div>
+        </div>
+        <div class="pipeline fragment">
+            <div class="pipeline-step">a⁽ʰ⁾</div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step">z⁽ᵒᵘᵗ⁾ = a⁽ʰ⁾W⁽ᵒᵘᵗ⁾ᵀ + b⁽ᵒᵘᵗ⁾</div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step">a⁽ᵒᵘᵗ⁾ = σ(z⁽ᵒᵘᵗ⁾)</div>
+        </div>
+    </section>
+    <section>
+        <h3>The Pattern</h3>
+        <p>Each layer does the same thing:</p>
+        <p class="fragment" style="margin-top: 0.5em;">1. Linear transformation: <span class="math-inline">z = aW + b</span></p>
+        <p class="fragment">2. Non-linear activation: <span class="math-inline">a = σ(z)</span></p>
+        <p class="fragment" style="margin-top: 1em;">Repeat for each layer</p>
+    </section>
+    <section>
+        <h3>In Code</h3>
+        <pre><code class="python">def forward(self, X):
+    # Hidden layer
+    z_h = np.dot(X, self.W_h.T) + self.b_h
+    a_h = self.sigmoid(z_h)
+    
+    # Output layer
+    z_out = np.dot(a_h, self.W_out.T) + self.b_out
+    a_out = self.sigmoid(z_out)
+    
+    return a_out</code></pre>
+    </section>
+    <section>
+        <h3>Matrix Dimensions</h3>
+        <p>Input X: <span class="math-inline">(n_samples, n_features)</span></p>
+        <p class="fragment">W⁽ʰ⁾: <span class="math-inline">(n_hidden, n_features)</span></p>
+        <p class="fragment">a⁽ʰ⁾: <span class="math-inline">(n_samples, n_hidden)</span></p>
+        <p class="fragment">W⁽ᵒᵘᵗ⁾: <span class="math-inline">(n_output, n_hidden)</span></p>
+        <p class="fragment">a⁽ᵒᵘᵗ⁾: <span class="math-inline">(n_samples, n_output)</span></p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>Backpropagation</h2>
+        <p>The algorithm that makes deep learning possible</p>
+    </section>
+    <section>
+        <h3>The Problem</h3>
+        <p>We know how to compute the loss</p>
+        <p class="fragment">We need gradients to update weights</p>
+        <p class="fragment" style="margin-top: 1em;">But hidden layer weights do not directly affect the output</p>
+        <p class="fragment">How do we compute their gradients?</p>
+    </section>
+    <section>
+        <h3>The Chain Rule</h3>
+        <div class="formula-box">∂L/∂w = ∂L/∂a · ∂a/∂z · ∂z/∂w</div>
+        <p class="fragment" style="margin-top: 1em;">Decompose the gradient into a chain of simpler derivatives</p>
+    </section>
+    <section>
+        <h3>The Key Insight</h3>
+        <div class="intuition-box">
+            <div class="label">Intuition</div>
+            <p>Error at the output "flows backward" through the network.</p>
+            <p style="margin-top: 0.5em;">Each layer receives error proportional to how much it contributed.</p>
+            <p style="margin-top: 0.5em;">This is why it is called <span class="bold">back</span>propagation.</p>
+        </div>
+    </section>
+    <section>
+        <h3>Step 1: Output Layer Error</h3>
+        <p>Loss: <span class="math-inline">L = (y - a⁽ᵒᵘᵗ⁾)²</span></p>
+        <p class="fragment" style="margin-top: 0.5em;">Output error signal:</p>
+        <div class="formula-box fragment">δ⁽ᵒᵘᵗ⁾ = (a⁽ᵒᵘᵗ⁾ - y) · σ'(z⁽ᵒᵘᵗ⁾)</div>
+    </section>
+    <section>
+        <h3>Step 2: Propagate Error Back</h3>
+        <p>Hidden layer receives error through weights:</p>
+        <div class="formula-box fragment">δ⁽ʰ⁾ = (δ⁽ᵒᵘᵗ⁾ · W⁽ᵒᵘᵗ⁾) · σ'(z⁽ʰ⁾)</div>
+        <p class="fragment" style="margin-top: 1em;">Each hidden unit's error = weighted sum of output errors × its activation derivative</p>
+    </section>
+    <section>
+        <h3>Step 3: Compute Gradients</h3>
+        <p>Output layer gradients:</p>
+        <p class="fragment"><span class="math-inline">∂L/∂W⁽ᵒᵘᵗ⁾ = δ⁽ᵒᵘᵗ⁾ᵀ · a⁽ʰ⁾</span></p>
+        <p class="fragment" style="margin-top: 1em;">Hidden layer gradients:</p>
+        <p class="fragment"><span class="math-inline">∂L/∂W⁽ʰ⁾ = δ⁽ʰ⁾ᵀ · X</span></p>
+    </section>
+    <section>
+        <h3>Step 4: Update Weights</h3>
+        <div class="formula-box">W = W - η · ∂L/∂W</div>
+        <p class="fragment" style="margin-top: 1em;">Same gradient descent we used in Adaline</p>
+        <p class="fragment">Just applied to each layer</p>
+    </section>
+    <section>
+        <h3>Why Right-to-Left?</h3>
+        <p>Efficiency.</p>
+        <p class="fragment" style="margin-top: 0.5em;">Computing gradients left-to-right requires expensive matrix-matrix multiplications</p>
+        <p class="fragment">Right-to-left uses cheaper matrix-vector multiplications</p>
+        <p class="fragment" style="margin-top: 1em;">This insight is called <span class="bold">reverse-mode automatic differentiation</span></p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>The Code</h2>
+        <p>Complete MLP implementation</p>
+    </section>
+    <section>
+        <h3>Initialization</h3>
+        <pre><code class="python">class MLP:
+    def __init__(self, n_hidden=50, epochs=100, eta=0.001):
+        self.n_hidden = n_hidden
+        self.epochs = epochs
+        self.eta = eta
+    
+    def _init_weights(self, n_features, n_output):
+        rng = np.random.RandomState(self.random_state)
+        self.W_h = rng.normal(0, 0.1, (self.n_hidden, n_features))
+        self.b_h = np.zeros(self.n_hidden)
+        self.W_out = rng.normal(0, 0.1, (n_output, self.n_hidden))
+        self.b_out = np.zeros(n_output)</code></pre>
+    </section>
+    <section>
+        <h3>Forward Pass</h3>
+        <pre><code class="python">def _forward(self, X):
+    # Hidden layer
+    z_h = np.dot(X, self.W_h.T) + self.b_h
+    a_h = self._sigmoid(z_h)
+    
+    # Output layer
+    z_out = np.dot(a_h, self.W_out.T) + self.b_out
+    a_out = self._sigmoid(z_out)
+    
+    return z_h, a_h, z_out, a_out
+
+def _sigmoid(self, z):
+    return 1.0 / (1.0 + np.exp(-np.clip(z, -250, 250)))</code></pre>
+    </section>
+    <section>
+        <h3>Backward Pass</h3>
+        <pre><code class="python">def _backward(self, X, a_h, a_out, y):
+    # Output layer error
+    delta_out = (a_out - y) * a_out * (1 - a_out)
+    
+    # Hidden layer error
+    delta_h = np.dot(delta_out, self.W_out) * a_h * (1 - a_h)
+    
+    # Gradients
+    grad_W_out = np.dot(delta_out.T, a_h) / X.shape[0]
+    grad_b_out = delta_out.mean(axis=0)
+    grad_W_h = np.dot(delta_h.T, X) / X.shape[0]
+    grad_b_h = delta_h.mean(axis=0)
+    
+    return grad_W_h, grad_b_h, grad_W_out, grad_b_out</code></pre>
+    </section>
+    <section>
+        <h3>Training Loop</h3>
+        <pre><code class="python">def fit(self, X, y):
+    self._init_weights(X.shape[1], y.shape[1])
+    
+    for epoch in range(self.epochs):
+        z_h, a_h, z_out, a_out = self._forward(X)
+        
+        grad_W_h, grad_b_h, grad_W_out, grad_b_out = \
+            self._backward(X, a_h, a_out, y)
+        
+        self.W_out -= self.eta * grad_W_out
+        self.b_out -= self.eta * grad_b_out
+        self.W_h -= self.eta * grad_W_h
+        self.b_h -= self.eta * grad_b_h
+    
+    return self</code></pre>
+    </section>
+</section>
+
+<section>
+    <h2>Live Demo</h2>
+    <a href="/demo-backpropogation/" target="_blank" class="btn">Open Interactive Demo</a>
+    <p class="muted ui-text" style="font-size: 0.8em; margin-top: 1em;">Compare Perceptron vs MLP on the XOR problem</p>
+</section>
+
+<section>
+    <section>
+        <h2>Training on MNIST</h2>
+        <p>Handwritten digit recognition</p>
+    </section>
+    <section>
+        <h3>The Dataset</h3>
+        <p>60,000 training images, 10,000 test images</p>
+        <p class="fragment">28 × 28 pixels = 784 features</p>
+        <p class="fragment">10 classes (digits 0-9)</p>
+    </section>
+    <section>
+        <h3>Network Architecture</h3>
+        <p>Input: 784 neurons</p>
+        <p class="fragment">Hidden: 50 neurons</p>
+        <p class="fragment">Output: 10 neurons (one per digit)</p>
+        <p class="fragment" style="margin-top: 1em;">Total: 39,760 parameters</p>
+    </section>
+    <section>
+        <h3>Results</h3>
+        <p>After 50 epochs with mini-batch gradient descent:</p>
+        <p class="fragment green bold" style="font-size: 1.3em; margin-top: 0.5em;">94.51% test accuracy</p>
+        <p class="fragment muted" style="margin-top: 1em; font-size: 0.8em;">Not state-of-the-art, but remarkable for such a simple network</p>
+    </section>
+</section>
+
+<section>
+    <section>
+        <h2>Why This Matters</h2>
+        <p>Backpropagation is the foundation of deep learning</p>
+    </section>
+    <section>
+        <h3>Everything Uses It</h3>
+        <p>CNNs for images? Backprop.</p>
+        <p class="fragment">RNNs for sequences? Backprop.</p>
+        <p class="fragment">Transformers (GPT, BERT)? Backprop.</p>
+        <p class="fragment" style="margin-top: 1em;">The architecture changes, the training algorithm does not.</p>
+    </section>
+    <section>
+        <h3>Universal Approximation</h3>
+        <p>A neural network with one hidden layer can approximate <span class="bold">any continuous function</span></p>
+        <p class="fragment" style="margin-top: 0.5em;">Given enough hidden units</p>
+        <p class="fragment muted" style="margin-top: 1em; font-size: 0.8em;">Cybenko, 1989</p>
+    </section>
+    <section>
+        <h3>What Changes in Modern Deep Learning</h3>
+        <table>
+            <tr><th>Classic MLP</th><th>Modern Networks</th></tr>
+            <tr><td>1-2 hidden layers</td><td>100+ layers</td></tr>
+            <tr><td>Sigmoid activation</td><td>ReLU, GELU</td></tr>
+            <tr><td>Vanilla SGD</td><td>Adam, AdamW</td></tr>
+            <tr><td>No regularization</td><td>Dropout, BatchNorm</td></tr>
+        </table>
+        <p class="fragment" style="margin-top: 1em;">But the core is still: forward pass, compute loss, backprop, update</p>
+    </section>
+</section>
+
+<section>
+    <h2>Summary</h2>
+    <table>
+        <tr><th>Concept</th><th>What It Does</th></tr>
+        <tr><td>Hidden Layers</td><td>Learn intermediate representations</td></tr>
+        <tr><td>Activation Functions</td><td>Add non-linearity (essential!)</td></tr>
+        <tr><td>Forward Propagation</td><td>Compute predictions layer by layer</td></tr>
+        <tr><td>Backpropagation</td><td>Compute gradients using chain rule</td></tr>
+        <tr><td>Error Signal (δ)</td><td>How much each neuron contributed to error</td></tr>
+    </table>
+</section>
+
+<section>
+    <h2>The Takeaway</h2>
+    <p>Deep learning is just:</p>
+    <div class="algo-steps" style="max-width: 500px;">
+        <div class="algo-step fragment"><div class="step-num">1</div><div class="step-content">Forward pass: compute predictions</div></div>
+        <div class="algo-step fragment"><div class="step-num">2</div><div class="step-content">Compute loss: how wrong are we?</div></div>
+        <div class="algo-step fragment"><div class="step-num">3</div><div class="step-content">Backward pass: compute gradients</div></div>
+        <div class="algo-step fragment"><div class="step-num">4</div><div class="step-content">Update weights: step downhill</div></div>
+    </div>
+    <p class="fragment" style="margin-top: 1em;">Repeat millions of times with lots of data.</p>
+</section>
+
+<section>
+    <h2>Resources</h2>
+    <ul style="list-style: none; max-width: 550px; margin: 0 auto; text-align: left;">
+        <li style="margin-bottom: 1em;">Essay: <a href="/backpropogation/">i33ym.cc/backpropogation</a></li>
+        <li style="margin-bottom: 1em;">Demo: <a href="/demo-backpropogation/">i33ym.cc/demo-backpropogation</a></li>
+        <li style="margin-bottom: 1em;">Code: <a href="https://github.com/i33ym/workshop">github.com/i33ym/workshop</a></li>
+    </ul>
+</section>
+
+<section>
+    <h2>Next Time</h2>
+    <p><span class="bold">Training Neural Networks</span></p>
+    <p class="muted" style="margin-top: 0.5em;">Debugging, overfitting, and regularization</p>
+</section>
+
+<section>
+    <h1>Questions?</h1>
+    <p class="meta" style="margin-top: 3em;">i33ym.cc</p>
+</section>
+{% endblock %}

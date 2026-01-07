@@ -19,6 +19,8 @@ urlpatterns = [
     path("demo-perceptron/", TemplateView.as_view(template_name="demo-perceptron.html"), name="demo-perceptron"),
     path("demo-adaline/", TemplateView.as_view(template_name="demo-adaline.html"), name="demo-adaline"),
     path("slides-adaline/", TemplateView.as_view(template_name="slides-adaline.html"), name="slides-adaline"),
+    path("demo-backpropogation/", TemplateView.as_view(template_name="demo-backpropogation.html"), name="demo-backpropogation"),
+    path("slides-backpropogation/", TemplateView.as_view(template_name="slides-backpropogation.html"), name="slides-backpropogation"),
     path("", include("apps.articles.urls")),
 ]
 

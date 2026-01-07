@@ -1,0 +1,813 @@
+{% extends "demo-base.html" %}
+
+{% block demo_title %}Multilayer Perceptron{% endblock %}
+{% block demo_subtitle %}Watch a hidden layer solve the XOR problem that single neurons cannot.{% endblock %}
+{% block back_link %}/slides-mlp/{% endblock %}
+{% block back_text %}back to slides{% endblock %}
+
+{% block demo_styles %}
+.demo-container { max-width: 1100px; }
+.top-section { margin-bottom: 20px; }
+.mode-switcher { display: flex; gap: 8px; margin-bottom: 15px; }
+.mode-btn { flex: 1; font-family: 'Inter', sans-serif; font-size: 13px; padding: 12px 16px; background: #f5f5f5; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s; color: #666; font-weight: 500; }
+.mode-btn:hover { background: #eee; border-color: #ccc; }
+.mode-btn.active { background: #2c2c2c; border-color: #2c2c2c; color: #fff; }
+.mode-btn .mode-title { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.mode-btn .mode-desc { display: block; font-size: 11px; opacity: 0.7; }
+.main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.panel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.panel-title { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
+.panel-badge { font-family: 'SF Mono', Consolas, monospace; font-size: 11px; color: #666; background: #f0f0f0; padding: 3px 10px; border-radius: 4px; }
+.panel-badge.success { background: #e8f5e9; color: #2e7d32; }
+.panel-badge.error { background: #ffebee; color: #c62828; }
+.viz-canvas { background: #fafafa; border-radius: 6px; height: 260px; position: relative; }
+.viz-canvas canvas { width: 100%; height: 100%; border-radius: 6px; display: block; }
+.viz-canvas.short { height: 180px; }
+.viz-legend { display: flex; gap: 20px; justify-content: center; margin-top: 12px; font-family: 'Inter', sans-serif; font-size: 12px; color: #666; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.controls-row { display: flex; gap: 20px; margin-bottom: 20px; }
+.controls-row .panel { flex: 1; }
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.stats-row { display: flex; gap: 12px; }
+.stat-box { flex: 1; background: #fafafa; border-radius: 6px; padding: 14px 10px; text-align: center; }
+.stat-value { font-family: 'SF Mono', Consolas, monospace; font-size: 20px; font-weight: 600; color: #2c2c2c; }
+.stat-label { font-family: 'Inter', sans-serif; font-size: 10px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+.hint { font-family: 'Inter', sans-serif; font-size: 12px; color: #888; margin-top: 12px; line-height: 1.5; }
+.xor-table { width: 100%; margin: 10px 0; border-collapse: collapse; }
+.xor-table th, .xor-table td { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; padding: 6px 8px; text-align: center; }
+.xor-table th { color: #888; font-weight: 500; font-size: 11px; }
+.xor-table td { background: #fafafa; }
+.xor-table tr:first-child td:first-child { border-radius: 4px 0 0 0; }
+.xor-table tr:first-child td:last-child { border-radius: 0 4px 0 0; }
+.xor-table tr:last-child td:first-child { border-radius: 0 0 0 4px; }
+.xor-table tr:last-child td:last-child { border-radius: 0 0 4px 0; }
+.result-msg { font-family: 'Inter', sans-serif; font-size: 13px; padding: 12px; border-radius: 6px; margin-top: 12px; text-align: center; }
+.result-msg.fail { background: #ffebee; color: #c62828; }
+.result-msg.success { background: #e8f5e9; color: #2e7d32; }
+@media (max-width: 900px) { .main-grid, .bottom-grid, .controls-row { grid-template-columns: 1fr; } .mode-switcher { flex-direction: column; } }
+{% endblock %}
+
+{% block demo_content %}
+<div class="top-section">
+    <div class="mode-switcher">
+        <button class="mode-btn" id="perceptronMode">
+            <span class="mode-title">Try Perceptron</span>
+            <span class="mode-desc">Single neuron — can it solve XOR?</span>
+        </button>
+        <button class="mode-btn active" id="mlpMode">
+            <span class="mode-title">Try MLP</span>
+            <span class="mode-desc">Hidden layer — watch it learn</span>
+        </button>
+    </div>
+</div>
+
+<div class="main-grid">
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Decision Boundary</span>
+            <span class="panel-badge" id="modeBadge">MLP (4 hidden)</span>
+        </div>
+        <div class="viz-canvas">
+            <canvas id="boundaryCanvas"></canvas>
+        </div>
+        <div class="viz-legend">
+            <div class="legend-item"><div class="legend-dot" style="background: #2e7d32"></div> Class 1</div>
+            <div class="legend-item"><div class="legend-dot" style="background: #c62828"></div> Class 0</div>
+        </div>
+    </div>
+
+    <div class="panel" id="networkPanel">
+        <div class="panel-header">
+            <span class="panel-title">Network Architecture</span>
+            <span class="panel-badge" id="paramBadge">17 params</span>
+        </div>
+        <div class="viz-canvas">
+            <canvas id="networkCanvas"></canvas>
+        </div>
+        <div class="viz-legend" id="networkLegend">
+            <div class="legend-item"><div class="legend-dot" style="background: #0277bd"></div> Input</div>
+            <div class="legend-item"><div class="legend-dot" style="background: #7b1fa2"></div> Hidden</div>
+            <div class="legend-item"><div class="legend-dot" style="background: #ef6c00"></div> Output</div>
+        </div>
+    </div>
+</div>
+
+<div class="controls-row">
+    <div class="panel">
+        <div class="panel-section">
+            <div class="panel-title">Parameters</div>
+            <div class="slider-row" id="lrRow">
+                <label>Learning rate (η): <span class="slider-value" id="lrValue">2.0</span></label>
+                <input type="range" id="lrSlider" min="1" max="30" step="1" value="20">
+            </div>
+            <div class="slider-row" id="unitsRow">
+                <label>Hidden units: <span class="slider-value" id="unitsValue">4</span></label>
+                <input type="range" id="unitsSlider" min="2" max="8" step="1" value="4">
+            </div>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-section">
+            <div class="panel-title">Actions</div>
+            <div class="btn-group" style="flex-direction: row; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="trainBtn">▶ Train</button>
+                <button class="btn btn-secondary" id="stepBtn">Step</button>
+                <button class="btn btn-danger" id="resetBtn">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-grid">
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Loss Curve</span>
+        </div>
+        <div class="viz-canvas short">
+            <canvas id="lossCanvas"></canvas>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Training Progress</span>
+        </div>
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-value" id="epochStat">0</div>
+                <div class="stat-label">Epoch</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="lossStat">—</div>
+                <div class="stat-label">Loss</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="accStat">—</div>
+                <div class="stat-label">Accuracy</div>
+            </div>
+        </div>
+        <div id="resultMsg" class="result-msg" style="display: none;"></div>
+        <div id="statusIndicator" class="status-indicator status-idle" style="margin-top: 12px;">
+            <div class="status-dot"></div>
+            <span>Click Train to start</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block demo_script %}
+<script>
+// ============================================
+// MLP Implementation
+// ============================================
+
+class MLP {
+    constructor(inputSize, hiddenSize, outputSize) {
+        this.inputSize = inputSize;
+        this.hiddenSize = hiddenSize;
+        this.outputSize = outputSize;
+        this.initWeights();
+    }
+
+    initWeights() {
+        const scaleH = Math.sqrt(2.0 / this.inputSize);
+        const scaleO = Math.sqrt(2.0 / this.hiddenSize);
+        this.W_h = this.randomMatrix(this.hiddenSize, this.inputSize, scaleH);
+        this.b_h = new Array(this.hiddenSize).fill(0);
+        this.W_out = this.randomMatrix(this.outputSize, this.hiddenSize, scaleO);
+        this.b_out = new Array(this.outputSize).fill(0);
+    }
+
+    randomMatrix(rows, cols, scale) {
+        return Array.from({length: rows}, () => 
+            Array.from({length: cols}, () => (Math.random() - 0.5) * 2 * scale)
+        );
+    }
+
+    sigmoid(x) { return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, x)))); }
+    sigmoidDeriv(a) { return a * (1 - a); }
+
+    forward(x) {
+        this.a_h = [];
+        for (let i = 0; i < this.hiddenSize; i++) {
+            let z = this.b_h[i];
+            for (let j = 0; j < this.inputSize; j++) z += this.W_h[i][j] * x[j];
+            this.a_h.push(this.sigmoid(z));
+        }
+        this.a_out = [];
+        for (let i = 0; i < this.outputSize; i++) {
+            let z = this.b_out[i];
+            for (let j = 0; j < this.hiddenSize; j++) z += this.W_out[i][j] * this.a_h[j];
+            this.a_out.push(this.sigmoid(z));
+        }
+        return this.a_out;
+    }
+
+    backward(x, y, lr) {
+        const delta_out = [];
+        for (let i = 0; i < this.outputSize; i++) {
+            delta_out.push((this.a_out[i] - y[i]) * this.sigmoidDeriv(this.a_out[i]));
+        }
+        const delta_h = [];
+        for (let i = 0; i < this.hiddenSize; i++) {
+            let err = 0;
+            for (let j = 0; j < this.outputSize; j++) err += delta_out[j] * this.W_out[j][i];
+            delta_h.push(err * this.sigmoidDeriv(this.a_h[i]));
+        }
+        for (let i = 0; i < this.outputSize; i++) {
+            for (let j = 0; j < this.hiddenSize; j++) this.W_out[i][j] -= lr * delta_out[i] * this.a_h[j];
+            this.b_out[i] -= lr * delta_out[i];
+        }
+        for (let i = 0; i < this.hiddenSize; i++) {
+            for (let j = 0; j < this.inputSize; j++) this.W_h[i][j] -= lr * delta_h[i] * x[j];
+            this.b_h[i] -= lr * delta_h[i];
+        }
+    }
+
+    predict(x) { return this.forward(x)[0] > 0.5 ? 1 : 0; }
+    loss(x, y) { const out = this.forward(x); return Math.pow(y[0] - out[0], 2); }
+    paramCount() { return this.hiddenSize * this.inputSize + this.hiddenSize + this.outputSize * this.hiddenSize + this.outputSize; }
+}
+
+// ============================================
+// Perceptron Implementation
+// ============================================
+
+class Perceptron {
+    constructor() { this.w = [Math.random() - 0.5, Math.random() - 0.5]; this.b = 0; }
+    predict(x) { return (this.w[0] * x[0] + this.w[1] * x[1] + this.b) >= 0 ? 1 : 0; }
+    train(x, y, lr) {
+        const pred = this.predict(x);
+        const err = y - pred;
+        if (err !== 0) {
+            this.w[0] += lr * err * x[0];
+            this.w[1] += lr * err * x[1];
+            this.b += lr * err;
+            return 1;
+        }
+        return 0;
+    }
+}
+
+// ============================================
+// XOR Dataset
+// ============================================
+
+const XOR = [
+    {x: [0, 0], y: [0]},
+    {x: [0, 1], y: [1]},
+    {x: [1, 0], y: [1]},
+    {x: [1, 1], y: [0]}
+];
+
+// ============================================
+// State
+// ============================================
+
+let mode = 'mlp'; // 'mlp' or 'perceptron'
+let mlp = new MLP(2, 4, 1);
+let perceptron = new Perceptron();
+let epoch = 0;
+let lossHistory = [];
+let running = false;
+let animationId = null;
+let learningRate = 2.0;
+let hiddenUnits = 4;
+
+// ============================================
+// Canvas Setup
+// ============================================
+
+function setupCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w: rect.width, h: rect.height };
+}
+
+// ============================================
+// Drawing Functions
+// ============================================
+
+function drawBoundary() {
+    const canvas = document.getElementById('boundaryCanvas');
+    const { ctx, w, h } = setupCanvas(canvas);
+    const pad = 40;
+    const plotW = w - 2 * pad;
+    const plotH = h - 2 * pad;
+
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, w, h);
+
+    // Decision boundary heatmap
+    const res = 60;
+    for (let i = 0; i < res; i++) {
+        for (let j = 0; j < res; j++) {
+            const x1 = i / (res - 1);
+            const x2 = j / (res - 1);
+            let pred;
+            if (mode === 'mlp') {
+                pred = mlp.forward([x1, x2])[0];
+            } else {
+                pred = (perceptron.w[0] * x1 + perceptron.w[1] * x2 + perceptron.b) >= 0 ? 1 : 0;
+            }
+            const px = pad + x1 * plotW;
+            const py = pad + (1 - x2) * plotH;
+            const conf = mode === 'mlp' ? Math.abs(pred - 0.5) * 2 : 0.5;
+            ctx.fillStyle = pred > 0.5 ? 
+                `rgba(46,125,50,${0.06 + conf * 0.25})` : 
+                `rgba(198,40,40,${0.06 + conf * 0.25})`;
+            ctx.fillRect(px, py, plotW / res + 1, plotH / res + 1);
+        }
+    }
+
+    // Decision boundary line for perceptron
+    if (mode === 'perceptron' && (perceptron.w[0] !== 0 || perceptron.w[1] !== 0)) {
+        ctx.strokeStyle = '#2c2c2c';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        if (Math.abs(perceptron.w[1]) > 0.001) {
+            const y0 = -(perceptron.w[0] * 0 + perceptron.b) / perceptron.w[1];
+            const y1 = -(perceptron.w[0] * 1 + perceptron.b) / perceptron.w[1];
+            ctx.moveTo(pad, pad + (1 - y0) * plotH);
+            ctx.lineTo(pad + plotW, pad + (1 - y1) * plotH);
+        } else if (Math.abs(perceptron.w[0]) > 0.001) {
+            const xLine = -perceptron.b / perceptron.w[0];
+            ctx.moveTo(pad + xLine * plotW, pad);
+            ctx.lineTo(pad + xLine * plotW, pad + plotH);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Axes
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, pad);
+    ctx.lineTo(pad, h - pad);
+    ctx.lineTo(w - pad, h - pad);
+    ctx.stroke();
+
+    // Axis labels
+    ctx.fillStyle = '#999';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x₁', w / 2, h - 10);
+    ctx.save();
+    ctx.translate(12, h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('x₂', 0, 0);
+    ctx.restore();
+
+    // Tick labels
+    ctx.font = '10px SF Mono, Consolas, monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'center';
+    ctx.fillText('0', pad, h - pad + 15);
+    ctx.fillText('1', w - pad, h - pad + 15);
+    ctx.textAlign = 'right';
+    ctx.fillText('0', pad - 8, h - pad + 4);
+    ctx.fillText('1', pad - 8, pad + 4);
+
+    // Data points
+    for (const d of XOR) {
+        const px = pad + d.x[0] * plotW;
+        const py = pad + (1 - d.x[1]) * plotH;
+        const pred = mode === 'mlp' ? mlp.predict(d.x) : perceptron.predict(d.x);
+        const correct = pred === d.y[0];
+
+        // Incorrect highlight
+        if (!correct) {
+            ctx.beginPath();
+            ctx.arc(px, py, 18, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ffc107';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(px, py, 13, 0, Math.PI * 2);
+        ctx.fillStyle = d.y[0] === 1 ? '#2e7d32' : '#c62828';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px SF Mono, Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.y[0], px, py + 4);
+    }
+}
+
+function drawNetwork() {
+    const canvas = document.getElementById('networkCanvas');
+    const { ctx, w, h } = setupCanvas(canvas);
+
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, w, h);
+
+    if (mode === 'perceptron') {
+        // Draw simple perceptron
+        const inputX = 80, outputX = w - 80;
+        const inputY = [h / 2 - 40, h / 2 + 40];
+        const outputY = h / 2;
+
+        // Connections
+        for (let i = 0; i < 2; i++) {
+            const wt = perceptron.w[i];
+            ctx.strokeStyle = wt > 0 ? 
+                `rgba(46,125,50,${Math.min(Math.abs(wt) * 0.8 + 0.2, 0.9)})` :
+                `rgba(198,40,40,${Math.min(Math.abs(wt) * 0.8 + 0.2, 0.9)})`;
+            ctx.lineWidth = Math.abs(wt) * 4 + 1;
+            ctx.beginPath();
+            ctx.moveTo(inputX + 18, inputY[i]);
+            ctx.lineTo(outputX - 18, outputY);
+            ctx.stroke();
+        }
+
+        // Input nodes
+        for (let i = 0; i < 2; i++) {
+            ctx.beginPath();
+            ctx.arc(inputX, inputY[i], 18, 0, Math.PI * 2);
+            ctx.fillStyle = '#0277bd';
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px SF Mono, Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(`x${i + 1}`, inputX, inputY[i] + 4);
+        }
+
+        // Output node
+        ctx.beginPath();
+        ctx.arc(outputX, outputY, 18, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef6c00';
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px SF Mono, Consolas, monospace';
+        ctx.fillText('ŷ', outputX, outputY + 4);
+
+        // Labels
+        ctx.fillStyle = '#888';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillText('Input', inputX, h - 15);
+        ctx.fillText('Output', outputX, h - 15);
+
+        return;
+    }
+
+    // MLP network
+    const layers = [
+        { size: 2, x: 70, color: '#0277bd' },
+        { size: mlp.hiddenSize, x: w / 2, color: '#7b1fa2' },
+        { size: 1, x: w - 70, color: '#ef6c00' }
+    ];
+
+    const nodePos = layers.map((layer) => {
+        const nodes = [];
+        const gap = Math.min(50, (h - 60) / layer.size);
+        const totalH = (layer.size - 1) * gap;
+        const startY = (h - totalH) / 2;
+        for (let i = 0; i < layer.size; i++) nodes.push({ x: layer.x, y: startY + i * gap });
+        return nodes;
+    });
+
+    // Connections: input → hidden
+    for (let i = 0; i < mlp.hiddenSize; i++) {
+        for (let j = 0; j < 2; j++) {
+            const wt = mlp.W_h[i][j];
+            ctx.strokeStyle = wt > 0 ? 
+                `rgba(46,125,50,${Math.min(Math.abs(wt) * 0.7 + 0.15, 0.85)})` :
+                `rgba(198,40,40,${Math.min(Math.abs(wt) * 0.7 + 0.15, 0.85)})`;
+            ctx.lineWidth = Math.abs(wt) * 2.5 + 0.5;
+            ctx.beginPath();
+            ctx.moveTo(nodePos[0][j].x + 16, nodePos[0][j].y);
+            ctx.lineTo(nodePos[1][i].x - 16, nodePos[1][i].y);
+            ctx.stroke();
+        }
+    }
+
+    // Connections: hidden → output
+    for (let j = 0; j < mlp.hiddenSize; j++) {
+        const wt = mlp.W_out[0][j];
+        ctx.strokeStyle = wt > 0 ? 
+            `rgba(46,125,50,${Math.min(Math.abs(wt) * 0.7 + 0.15, 0.85)})` :
+            `rgba(198,40,40,${Math.min(Math.abs(wt) * 0.7 + 0.15, 0.85)})`;
+        ctx.lineWidth = Math.abs(wt) * 2.5 + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(nodePos[1][j].x + 16, nodePos[1][j].y);
+        ctx.lineTo(nodePos[2][0].x - 16, nodePos[2][0].y);
+        ctx.stroke();
+    }
+
+    // Nodes
+    const labels = [['x₁', 'x₂'], null, ['ŷ']];
+    layers.forEach((layer, li) => {
+        nodePos[li].forEach((pos, ni) => {
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 16, 0, Math.PI * 2);
+            ctx.fillStyle = layer.color;
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px SF Mono, Consolas, monospace';
+            ctx.textAlign = 'center';
+            const label = labels[li] ? labels[li][ni] : `h${ni + 1}`;
+            ctx.fillText(label, pos.x, pos.y + 4);
+        });
+    });
+
+    // Layer labels
+    ctx.fillStyle = '#888';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Input', layers[0].x, h - 12);
+    ctx.fillText('Hidden', layers[1].x, h - 12);
+    ctx.fillText('Output', layers[2].x, h - 12);
+}
+
+function drawLoss() {
+    const canvas = document.getElementById('lossCanvas');
+    const { ctx, w, h } = setupCanvas(canvas);
+    const padL = 45, padR = 15, padT = 20, padB = 30;
+
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, w, h);
+
+    const chartW = w - padL - padR;
+    const chartH = h - padT - padB;
+
+    // Grid
+    ctx.strokeStyle = '#eee';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padT + chartH * i / 4;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = '#ddd';
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, h - padB);
+    ctx.lineTo(w - padR, h - padB);
+    ctx.stroke();
+
+    if (lossHistory.length < 2) return;
+
+    const maxLoss = Math.max(...lossHistory, 0.5);
+    const maxEpochs = Math.max(lossHistory.length, 20);
+
+    // Labels
+    ctx.fillStyle = '#999';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Epoch', w / 2, h - 8);
+    ctx.textAlign = 'right';
+    ctx.font = '9px SF Mono, Consolas, monospace';
+    ctx.fillText(maxLoss.toFixed(2), padL - 6, padT + 4);
+    ctx.fillText('0', padL - 6, h - padB + 4);
+
+    // Loss curve
+    ctx.strokeStyle = '#1565c0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < lossHistory.length; i++) {
+        const x = padL + (i / (maxEpochs - 1)) * chartW;
+        const y = padT + chartH - (lossHistory[i] / maxLoss) * chartH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Current point
+    const lastIdx = lossHistory.length - 1;
+    const x = padL + (lastIdx / (maxEpochs - 1)) * chartW;
+    const y = padT + chartH - (lossHistory[lastIdx] / maxLoss) * chartH;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#1565c0';
+    ctx.fill();
+}
+
+function updateDisplay() {
+    drawBoundary();
+    drawNetwork();
+    drawLoss();
+
+    document.getElementById('epochStat').textContent = epoch;
+    
+    if (lossHistory.length > 0) {
+        document.getElementById('lossStat').textContent = lossHistory[lossHistory.length - 1].toFixed(3);
+    } else {
+        document.getElementById('lossStat').textContent = '—';
+    }
+
+    let correct = 0;
+    for (const d of XOR) {
+        const pred = mode === 'mlp' ? mlp.predict(d.x) : perceptron.predict(d.x);
+        if (pred === d.y[0]) correct++;
+    }
+    document.getElementById('accStat').textContent = epoch > 0 ? (correct / XOR.length * 100).toFixed(0) + '%' : '—';
+
+    // Update badges
+    if (mode === 'mlp') {
+        document.getElementById('modeBadge').textContent = `MLP (${mlp.hiddenSize} hidden)`;
+        document.getElementById('paramBadge').textContent = mlp.paramCount() + ' params';
+        document.getElementById('networkLegend').innerHTML = `
+            <div class="legend-item"><div class="legend-dot" style="background: #0277bd"></div> Input</div>
+            <div class="legend-item"><div class="legend-dot" style="background: #7b1fa2"></div> Hidden</div>
+            <div class="legend-item"><div class="legend-dot" style="background: #ef6c00"></div> Output</div>
+        `;
+    } else {
+        document.getElementById('modeBadge').textContent = 'Perceptron';
+        document.getElementById('paramBadge').textContent = '3 params';
+        document.getElementById('networkLegend').innerHTML = `
+            <div class="legend-item"><div class="legend-dot" style="background: #0277bd"></div> Input</div>
+            <div class="legend-item"><div class="legend-dot" style="background: #ef6c00"></div> Output</div>
+        `;
+    }
+}
+
+function updateResultMsg() {
+    const msgEl = document.getElementById('resultMsg');
+    let correct = 0;
+    for (const d of XOR) {
+        const pred = mode === 'mlp' ? mlp.predict(d.x) : perceptron.predict(d.x);
+        if (pred === d.y[0]) correct++;
+    }
+
+    if (epoch === 0) {
+        msgEl.style.display = 'none';
+        return;
+    }
+
+    if (correct === 4) {
+        msgEl.className = 'result-msg success';
+        msgEl.textContent = mode === 'mlp' ? 
+            '✓ MLP solved XOR! Hidden layer enables non-linear boundaries.' :
+            '✓ All correct (by chance — perceptron can\'t reliably solve XOR)';
+        msgEl.style.display = 'block';
+    } else if (mode === 'perceptron' && epoch >= 50) {
+        msgEl.className = 'result-msg fail';
+        msgEl.textContent = '✗ Perceptron cannot solve XOR — no single line separates these points.';
+        msgEl.style.display = 'block';
+    } else {
+        msgEl.style.display = 'none';
+    }
+}
+
+// ============================================
+// Training
+// ============================================
+
+function trainEpoch() {
+    if (mode === 'mlp') {
+        let totalLoss = 0;
+        for (const d of XOR) {
+            mlp.forward(d.x);
+            totalLoss += mlp.loss(d.x, d.y);
+            mlp.backward(d.x, d.y, learningRate);
+        }
+        lossHistory.push(totalLoss / XOR.length);
+    } else {
+        let errors = 0;
+        for (const d of XOR) {
+            errors += perceptron.train(d.x, d.y[0], learningRate);
+        }
+        lossHistory.push(errors / XOR.length);
+    }
+    epoch++;
+    updateDisplay();
+    updateResultMsg();
+}
+
+function startTraining() {
+    if (running) {
+        running = false;
+        document.getElementById('trainBtn').textContent = '▶ Train';
+        setStatus('idle', 'Paused');
+        return;
+    }
+    running = true;
+    document.getElementById('trainBtn').textContent = '⏸ Pause';
+    setStatus('running', 'Training...');
+
+    function step() {
+        if (!running) return;
+        trainEpoch();
+
+        let correct = 0;
+        for (const d of XOR) {
+            const pred = mode === 'mlp' ? mlp.predict(d.x) : perceptron.predict(d.x);
+            if (pred === d.y[0]) correct++;
+        }
+
+        const loss = lossHistory[lossHistory.length - 1];
+        if (mode === 'mlp' && correct === 4 && loss < 0.02) {
+            running = false;
+            document.getElementById('trainBtn').textContent = '▶ Train';
+            setStatus('success', 'Converged!');
+            return;
+        }
+        if (epoch >= 500) {
+            running = false;
+            document.getElementById('trainBtn').textContent = '▶ Train';
+            setStatus(mode === 'perceptron' ? 'error' : 'idle', 
+                mode === 'perceptron' ? 'Cannot converge on XOR' : 'Max epochs');
+            return;
+        }
+        animationId = setTimeout(step, 30);
+    }
+    step();
+}
+
+function reset() {
+    running = false;
+    clearTimeout(animationId);
+    document.getElementById('trainBtn').textContent = '▶ Train';
+    
+    if (mode === 'mlp') {
+        mlp = new MLP(2, hiddenUnits, 1);
+    } else {
+        perceptron = new Perceptron();
+    }
+    epoch = 0;
+    lossHistory = [];
+    document.getElementById('resultMsg').style.display = 'none';
+    updateDisplay();
+    setStatus('idle', 'Click Train to start');
+}
+
+function setStatus(type, msg) {
+    const el = document.getElementById('statusIndicator');
+    el.className = `status-indicator status-${type}`;
+    el.innerHTML = `<div class="status-dot"></div><span>${msg}</span>`;
+}
+
+function switchMode(newMode) {
+    if (mode === newMode) return;
+    running = false;
+    clearTimeout(animationId);
+    document.getElementById('trainBtn').textContent = '▶ Train';
+    
+    mode = newMode;
+    epoch = 0;
+    lossHistory = [];
+    
+    document.getElementById('perceptronMode').classList.toggle('active', mode === 'perceptron');
+    document.getElementById('mlpMode').classList.toggle('active', mode === 'mlp');
+    document.getElementById('unitsRow').style.display = mode === 'mlp' ? 'block' : 'none';
+    document.getElementById('resultMsg').style.display = 'none';
+    
+    if (mode === 'mlp') {
+        mlp = new MLP(2, hiddenUnits, 1);
+    } else {
+        perceptron = new Perceptron();
+    }
+    
+    updateDisplay();
+    setStatus('idle', 'Click Train to start');
+}
+
+// ============================================
+// Event Listeners
+// ============================================
+
+document.getElementById('perceptronMode').addEventListener('click', () => switchMode('perceptron'));
+document.getElementById('mlpMode').addEventListener('click', () => switchMode('mlp'));
+
+document.getElementById('lrSlider').addEventListener('input', (e) => {
+    learningRate = parseInt(e.target.value) / 10;
+    document.getElementById('lrValue').textContent = learningRate.toFixed(1);
+});
+
+document.getElementById('unitsSlider').addEventListener('input', (e) => {
+    hiddenUnits = parseInt(e.target.value);
+    document.getElementById('unitsValue').textContent = hiddenUnits;
+    reset();
+});
+
+document.getElementById('trainBtn').addEventListener('click', startTraining);
+document.getElementById('stepBtn').addEventListener('click', trainEpoch);
+document.getElementById('resetBtn').addEventListener('click', reset);
+
+window.addEventListener('resize', updateDisplay);
+
+// ============================================
+// Initialize
+// ============================================
+
+updateDisplay();
+</script>
+{% endblock %}
