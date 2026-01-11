@@ -1,0 +1,660 @@
+{% extends "slides-base.html" %}
+
+{% block title %}NATS Production Patterns{% endblock %}
+
+{% block extra_styles %}
+.purple { color: #7b1fa2; }
+.cyan { color: #00838f; }
+.service-box { background: #e8f5e9; border: 2px solid var(--green); border-radius: 10px; padding: 15px 20px; font-family: 'Inter', sans-serif; text-align: center; }
+.service-box .name { font-weight: 600; font-size: 0.9em; color: var(--green); }
+.service-box .version { font-size: 0.7em; color: #888; margin-top: 4px; }
+.service-box .endpoints { font-size: 0.7em; color: #666; margin-top: 8px; }
+.arch-diagram { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 1.5em 0; flex-wrap: wrap; }
+.arch-box { padding: 12px 20px; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.7em; font-weight: 500; text-align: center; }
+.arch-box.client { background: #e3f2fd; border: 2px solid var(--blue); }
+.arch-box.nats { background: #f3e5f5; border: 2px solid #7b1fa2; }
+.arch-box.service { background: #e8f5e9; border: 2px solid var(--green); }
+.arch-box.store { background: #fff3e0; border: 2px solid var(--orange); }
+.arch-arrow { font-size: 1.2em; color: var(--muted); }
+.security-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 1em 0; }
+.security-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+.security-item .icon { font-size: 2em; margin-bottom: 10px; }
+.security-item .name { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.85em; margin-bottom: 6px; }
+.security-item .desc { font-size: 0.7em; color: var(--muted); }
+.pattern-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+.pattern-card .title { font-weight: 600; margin-bottom: 8px; }
+.pattern-card .desc { font-size: 0.85em; color: #666; }
+.event-flow { display: flex; flex-direction: column; gap: 8px; margin: 1em 0; font-family: 'SF Mono', monospace; font-size: 0.7em; }
+.event-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f5f5f5; border-radius: 6px; }
+.event-item .seq { color: #7b1fa2; font-weight: 600; width: 30px; }
+.event-item .type { color: var(--blue); }
+.event-item .data { color: #666; }
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 1em 0; }
+.metric-box { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 15px; text-align: center; }
+.metric-box .value { font-family: 'SF Mono', monospace; font-size: 1.5em; font-weight: 600; color: var(--blue); }
+.metric-box .label { font-family: 'Inter', sans-serif; font-size: 0.65em; color: #888; margin-top: 4px; }
+{% endblock %}
+
+{% block slides %}
+<section>
+    <h1>NATS Production Patterns</h1>
+    <p>Building Reliable Distributed Systems</p>
+    <p class="meta" style="margin-top: 2em;">Session 4 - NATS Workshop</p>
+    <p style="margin-top: 1em;">
+        <span class="tag">services</span>
+        <span class="tag">security</span>
+        <span class="tag">monitoring</span>
+        <span class="tag">patterns</span>
+    </p>
+</section>
+
+<section>
+    <h2>Workshop Recap</h2>
+    <table>
+        <tr>
+            <th>Session</th>
+            <th>What We Learned</th>
+        </tr>
+        <tr>
+            <td>1. Core NATS</td>
+            <td>Pub/Sub, Queue Groups, Request/Reply</td>
+        </tr>
+        <tr>
+            <td>2. JetStream</td>
+            <td>Streams, Consumers, Persistence</td>
+        </tr>
+        <tr>
+            <td>3. Advanced</td>
+            <td>KV Store, Object Store, Mirroring</td>
+        </tr>
+        <tr>
+            <td class="green">4. Production</td>
+            <td class="green">Services, Security, Patterns</td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h2>Services Framework</h2>
+    <p>Discoverable microservices with built-in monitoring</p>
+    <div class="arch-diagram">
+        <div class="service-box">
+            <div class="name">users-service</div>
+            <div class="version">v1.2.0</div>
+            <div class="endpoints">3 endpoints</div>
+        </div>
+        <div class="service-box">
+            <div class="name">orders-service</div>
+            <div class="version">v2.0.1</div>
+            <div class="endpoints">5 endpoints</div>
+        </div>
+        <div class="service-box">
+            <div class="name">payments-service</div>
+            <div class="version">v1.0.0</div>
+            <div class="endpoints">2 endpoints</div>
+        </div>
+    </div>
+    <p class="muted">Services register themselves. Clients discover dynamically.</p>
+</section>
+
+<section>
+    <h2>Defining a Service</h2>
+    <pre><code class="language-python">from nats.micro import Service, ServiceConfig
+
+# Define service configuration
+config = ServiceConfig(
+    name="orders",
+    version="1.0.0",
+    description="Order processing service",
+)
+
+# Create service
+service = await Service.create(nc, config)
+
+# Add endpoint
+@service.endpoint("create")
+async def create_order(req):
+    order = json.loads(req.data)
+    # Process order...
+    return json.dumps({"id": order_id, "status": "created"})</code></pre>
+</section>
+
+<section>
+    <h2>Service Endpoints</h2>
+    <pre><code class="language-python"># Multiple endpoints per service
+@service.endpoint("create")
+async def create_order(req):
+    return handle_create(req.data)
+
+@service.endpoint("get")
+async def get_order(req):
+    return handle_get(req.data)
+
+@service.endpoint("cancel")
+async def cancel_order(req):
+    return handle_cancel(req.data)
+
+# Endpoints become subjects:
+# orders.create, orders.get, orders.cancel</code></pre>
+</section>
+
+<section>
+    <h2>Service Discovery</h2>
+    <pre><code class="language-python"># Client discovers services via $SRV subjects
+# Built-in discovery - no external registry needed
+
+# Find all services
+resp = await nc.request("$SRV.INFO", b"")
+services = json.loads(resp.data)
+
+# Find specific service
+resp = await nc.request("$SRV.INFO.orders", b"")
+
+# Get service stats
+resp = await nc.request("$SRV.STATS.orders", b"")
+
+# Ping service
+resp = await nc.request("$SRV.PING.orders", b"")</code></pre>
+</section>
+
+<section>
+    <h2>Service Stats</h2>
+    <div class="metrics-grid">
+        <div class="metric-box">
+            <div class="value">12,456</div>
+            <div class="label">Requests</div>
+        </div>
+        <div class="metric-box">
+            <div class="value">23</div>
+            <div class="label">Errors</div>
+        </div>
+        <div class="metric-box">
+            <div class="value">2.3ms</div>
+            <div class="label">Avg Latency</div>
+        </div>
+        <div class="metric-box">
+            <div class="value">99.8%</div>
+            <div class="label">Success Rate</div>
+        </div>
+    </div>
+    <pre><code class="language-python"># Stats are automatic - no code needed
+{
+  "name": "orders",
+  "endpoints": [{
+    "name": "create",
+    "num_requests": 12456,
+    "num_errors": 23,
+    "average_processing_time": "2.3ms"
+  }]
+}</code></pre>
+</section>
+
+<section>
+    <h2>Connection Management</h2>
+    <pre><code class="language-python">nc = await nats.connect(
+    servers=["nats://server1:4222", "nats://server2:4222"],
+    
+    # Reconnection settings
+    max_reconnect_attempts=-1,    # Infinite retries
+    reconnect_time_wait=2,        # Seconds between attempts
+    
+    # Timeouts
+    connect_timeout=5,
+    ping_interval=20,
+    max_outstanding_pings=3,
+    
+    # Callbacks
+    disconnected_cb=on_disconnect,
+    reconnected_cb=on_reconnect,
+    error_cb=on_error,
+)</code></pre>
+</section>
+
+<section>
+    <h2>Error Handling</h2>
+    <pre><code class="language-python">async def on_disconnect():
+    print("Disconnected! Buffering messages...")
+
+async def on_reconnect():
+    print("Reconnected! Flushing buffer...")
+
+async def on_error(e):
+    print(f"Error: {e}")
+
+# Request with timeout and fallback
+try:
+    resp = await nc.request("api.orders", data, timeout=2.0)
+except TimeoutError:
+    # Service unavailable - use cached data or queue for retry
+    return cached_response()
+except NoRespondersError:
+    # No service listening
+    raise ServiceUnavailable()</code></pre>
+</section>
+
+<section>
+    <h2>Graceful Shutdown</h2>
+    <pre><code class="language-python">import signal
+
+async def shutdown(sig):
+    print(f"Received {sig}, shutting down...")
+    
+    # Stop accepting new requests
+    await service.stop()
+    
+    # Drain: finish in-flight, reject new
+    await nc.drain()
+    
+    # Close connection
+    await nc.close()
+
+# Register signal handlers
+loop = asyncio.get_event_loop()
+for sig in (signal.SIGTERM, signal.SIGINT):
+    loop.add_signal_handler(
+        sig, lambda s=sig: asyncio.create_task(shutdown(s))
+    )</code></pre>
+</section>
+
+<section>
+    <h2>Security Overview</h2>
+    <div class="security-grid">
+        <div class="security-item">
+            <div class="icon">TLS</div>
+            <div class="name">Encryption</div>
+            <div class="desc">TLS for all connections</div>
+        </div>
+        <div class="security-item">
+            <div class="icon">AUTH</div>
+            <div class="name">Authentication</div>
+            <div class="desc">Token, User/Pass, NKey, JWT</div>
+        </div>
+        <div class="security-item">
+            <div class="icon">ACCT</div>
+            <div class="name">Authorization</div>
+            <div class="desc">Accounts, permissions</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>TLS Configuration</h2>
+    <pre><code class="language-python"># Server config (nats-server.conf)
+tls {
+    cert_file: "/path/to/server-cert.pem"
+    key_file: "/path/to/server-key.pem"
+    ca_file: "/path/to/ca.pem"
+}
+
+# Client connection
+nc = await nats.connect(
+    servers=["tls://nats.example.com:4222"],
+    tls=ssl.create_default_context(
+        purpose=ssl.Purpose.SERVER_AUTH,
+        cafile="/path/to/ca.pem"
+    ),
+)</code></pre>
+</section>
+
+<section>
+    <h2>Authentication Methods</h2>
+    <pre><code class="language-python"># Token auth
+nc = await nats.connect(token="secret-token")
+
+# User/password
+nc = await nats.connect(user="myuser", password="mypass")
+
+# NKey (Ed25519 keypair)
+nc = await nats.connect(
+    nkeys_seed="/path/to/user.nk"
+)
+
+# JWT (for multi-tenant)
+nc = await nats.connect(
+    user_credentials="/path/to/user.creds"
+)</code></pre>
+</section>
+
+<section>
+    <h2>Accounts and Permissions</h2>
+    <pre><code># nats-server.conf
+accounts {
+    ORDERS {
+        users = [
+            {user: order_service, password: xxx,
+             permissions: {
+                publish: ["orders.>"]
+                subscribe: ["orders.>", "_INBOX.>"]
+            }}
+        ]
+    }
+    ANALYTICS {
+        users = [
+            {user: analytics, password: xxx,
+             permissions: {
+                subscribe: ["orders.>"]  # Read-only
+            }}
+        ]
+    }
+}</code></pre>
+</section>
+
+<section>
+    <h2>Monitoring: Server Stats</h2>
+    <pre><code class="language-python"># NATS exposes monitoring endpoints
+# http://localhost:8222/varz - General info
+# http://localhost:8222/connz - Connections
+# http://localhost:8222/routez - Cluster routes
+# http://localhost:8222/subz - Subscriptions
+# http://localhost:8222/jsz - JetStream
+
+# Enable in server config
+http_port: 8222
+
+# Or use nats CLI
+$ nats server info
+$ nats server report connections
+$ nats stream report</code></pre>
+</section>
+
+<section>
+    <h2>Prometheus Metrics</h2>
+    <pre><code># nats-server.conf
+http_port: 8222
+
+# Prometheus scrape config
+scrape_configs:
+  - job_name: 'nats'
+    static_configs:
+      - targets: ['nats:8222']
+    metrics_path: /metrics
+
+# Key metrics:
+# nats_server_connections
+# nats_server_messages_in/out
+# nats_jetstream_streams
+# nats_jetstream_consumers</code></pre>
+</section>
+
+<section>
+    <h2>Pattern: Event Sourcing</h2>
+    <p>Store events, derive state</p>
+    <div class="event-flow">
+        <div class="event-item"><span class="seq">1</span><span class="type">OrderCreated</span><span class="data">{id: 123, items: [...]}</span></div>
+        <div class="event-item"><span class="seq">2</span><span class="type">PaymentReceived</span><span class="data">{orderId: 123, amount: 99.99}</span></div>
+        <div class="event-item"><span class="seq">3</span><span class="type">OrderShipped</span><span class="data">{orderId: 123, tracking: "ABC"}</span></div>
+        <div class="event-item"><span class="seq">4</span><span class="type">OrderDelivered</span><span class="data">{orderId: 123}</span></div>
+    </div>
+    <p class="muted">Replay events to rebuild state at any point</p>
+</section>
+
+<section>
+    <h2>Event Sourcing with NATS</h2>
+    <pre><code class="language-python"># Store events in JetStream
+await js.add_stream(
+    name="ORDERS",
+    subjects=["orders.events.>"],
+    retention=RetentionPolicy.LIMITS,
+    max_age=365 * 24 * 60 * 60,  # 1 year
+)
+
+# Publish events
+await js.publish("orders.events.created", event_data,
+    headers={"Nats-Msg-Id": f"order-{order_id}-created"})
+
+# Rebuild state by replaying
+sub = await js.subscribe(
+    "orders.events.>",
+    deliver_policy=DeliverPolicy.ALL,
+)</code></pre>
+</section>
+
+<section>
+    <h2>Pattern: CQRS</h2>
+    <p>Separate read and write models</p>
+    <div class="arch-diagram">
+        <div class="arch-box client">Commands</div>
+        <div class="arch-arrow">--&gt;</div>
+        <div class="arch-box nats">NATS</div>
+        <div class="arch-arrow">--&gt;</div>
+        <div class="arch-box service">Write Model</div>
+    </div>
+    <div class="arch-diagram" style="margin-top: 10px;">
+        <div class="arch-box client">Queries</div>
+        <div class="arch-arrow">--&gt;</div>
+        <div class="arch-box store">Read Model</div>
+        <div class="arch-arrow">&lt;--</div>
+        <div class="arch-box nats">Projections</div>
+    </div>
+</section>
+
+<section>
+    <h2>CQRS Implementation</h2>
+    <pre><code class="language-python"># Write side: commands via request/reply
+@service.endpoint("orders.commands.create")
+async def create_order(req):
+    # Validate and store event
+    await js.publish("orders.events.created", event)
+    return {"id": order_id}
+
+# Read side: project events to read model
+async for msg in subscription.messages:
+    event = json.loads(msg.data)
+    if event["type"] == "OrderCreated":
+        await db.insert("orders_view", event["data"])
+    elif event["type"] == "OrderShipped":
+        await db.update("orders_view", ...)</code></pre>
+</section>
+
+<section>
+    <h2>Pattern: Saga</h2>
+    <p>Distributed transactions with compensation</p>
+    <div class="arch-diagram">
+        <div class="arch-box service">Create Order</div>
+        <div class="arch-arrow">--&gt;</div>
+        <div class="arch-box service">Reserve Inventory</div>
+        <div class="arch-arrow">--&gt;</div>
+        <div class="arch-box service">Process Payment</div>
+        <div class="arch-arrow">--&gt;</div>
+        <div class="arch-box service">Ship Order</div>
+    </div>
+    <p class="muted" style="margin-top: 1em;">If any step fails, compensate previous steps</p>
+</section>
+
+<section>
+    <h2>Saga with NATS</h2>
+    <pre><code class="language-python"># Orchestrator pattern
+async def process_order(order):
+    try:
+        # Step 1
+        await nc.request("inventory.reserve", order.items)
+        
+        # Step 2
+        await nc.request("payments.charge", order.payment)
+        
+        # Step 3
+        await nc.request("shipping.create", order.address)
+        
+    except Exception as e:
+        # Compensate
+        await nc.publish("inventory.release", order.items)
+        await nc.publish("payments.refund", order.payment)
+        raise</code></pre>
+</section>
+
+<section>
+    <h2>Pattern: Outbox</h2>
+    <p>Reliable event publishing from database</p>
+    <pre><code class="language-python"># Transaction: save + outbox
+async with db.transaction():
+    await db.insert("orders", order)
+    await db.insert("outbox", {
+        "subject": "orders.created",
+        "payload": order_json
+    })
+
+# Background worker publishes outbox
+async def outbox_worker():
+    while True:
+        events = await db.query("SELECT * FROM outbox")
+        for event in events:
+            await js.publish(event.subject, event.payload)
+            await db.delete("outbox", event.id)</code></pre>
+</section>
+
+<section>
+    <h2>Complete Architecture</h2>
+    <pre><code>API Gateway
+    |
+    v
+NATS Cluster (3 nodes, TLS, Auth)
+    |
+    +-- orders-service (3 replicas, queue group)
+    |       +-- ORDERS stream (events)
+    |       +-- TASKS stream (work queue)
+    |
+    +-- payments-service (2 replicas)
+    |       +-- Saga coordinator
+    |
+    +-- analytics-service
+    |       +-- ORDERS mirror (read-only)
+    |       +-- Projections to read DB
+    |
+    +-- config KV bucket
+    +-- assets Object Store</code></pre>
+</section>
+
+<section>
+    <h2>Deployment Checklist</h2>
+    <ul style="font-size: 0.9em;">
+        <li><span class="check">1.</span> Enable TLS for all connections</li>
+        <li><span class="check">2.</span> Configure authentication (JWT for multi-tenant)</li>
+        <li><span class="check">3.</span> Set up account permissions</li>
+        <li><span class="check">4.</span> Deploy 3+ node cluster for HA</li>
+        <li><span class="check">5.</span> Configure JetStream replication (R=3)</li>
+        <li><span class="check">6.</span> Enable monitoring endpoints</li>
+        <li><span class="check">7.</span> Set up Prometheus/Grafana</li>
+        <li><span class="check">8.</span> Implement graceful shutdown</li>
+        <li><span class="check">9.</span> Add health checks</li>
+        <li><span class="check">10.</span> Document subject naming conventions</li>
+    </ul>
+</section>
+
+<section>
+    <h2>Subject Naming Conventions</h2>
+    <pre><code># Recommended patterns:
+{domain}.{entity}.{action}
+{domain}.{entity}.{id}.{action}
+
+# Examples:
+orders.create
+orders.123.update
+orders.events.created
+orders.commands.cancel
+
+payments.process
+payments.events.completed
+
+# Internal:
+_INBOX.>          # Reply subjects
+$SRV.>            # Service discovery
+$JS.API.>         # JetStream API</code></pre>
+</section>
+
+<section>
+    <h2>Interactive Demo</h2>
+    <p>Explore services, monitoring, and patterns:</p>
+    <a href="/demo-nats-production/" class="btn">Launch Demo</a>
+    <p class="muted" style="margin-top: 1.5em; font-size: 0.8em;">Visualization of production architecture patterns</p>
+</section>
+
+<section>
+    <h2>Summary</h2>
+    <table>
+        <tr>
+            <th>Topic</th>
+            <th>Key Points</th>
+        </tr>
+        <tr>
+            <td>Services</td>
+            <td>Self-registering, discoverable, stats</td>
+        </tr>
+        <tr>
+            <td>Security</td>
+            <td>TLS + Auth + Accounts</td>
+        </tr>
+        <tr>
+            <td>Monitoring</td>
+            <td>/varz, /jsz, Prometheus</td>
+        </tr>
+        <tr>
+            <td>Patterns</td>
+            <td>Event Sourcing, CQRS, Saga, Outbox</td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h2>Key Takeaway</h2>
+    <div class="formula-box" style="font-size: 1em;">NATS = Complete Platform</div>
+    <div class="algo-steps" style="margin-top: 2em;">
+        <div class="algo-step">
+            <div class="step-num">1</div>
+            <div class="step-content">Messaging, persistence, KV, files - one system</div>
+        </div>
+        <div class="algo-step">
+            <div class="step-num">2</div>
+            <div class="step-content">Services framework for microservices</div>
+        </div>
+        <div class="algo-step">
+            <div class="step-num">3</div>
+            <div class="step-content">Production-ready: secure, observable, resilient</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Resources</h2>
+    <ul>
+        <li><a href="/the-nats-production/">Essay: Production Patterns Deep Dive</a></li>
+        <li><a href="/demo-nats-production/">Interactive Demo</a></li>
+        <li><a href="https://docs.nats.io">NATS Documentation</a></li>
+        <li><a href="https://natsbyexample.com">NATS by Example</a></li>
+        <li><a href="https://github.com/nats-io/nats.py">nats.py - Python Client</a></li>
+    </ul>
+</section>
+
+<section>
+    <h2>Workshop Complete!</h2>
+    <table>
+        <tr>
+            <th>Session</th>
+            <th>Topics Covered</th>
+        </tr>
+        <tr>
+            <td>1. Core</td>
+            <td>Pub/Sub, Queue Groups, Request/Reply</td>
+        </tr>
+        <tr>
+            <td>2. JetStream</td>
+            <td>Streams, Consumers, Acks, Replay</td>
+        </tr>
+        <tr>
+            <td>3. Advanced</td>
+            <td>KV, Object Store, Mirroring, Sourcing</td>
+        </tr>
+        <tr>
+            <td>4. Production</td>
+            <td>Services, Security, Patterns</td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h1>Questions?</h1>
+    <p class="meta">NATS Production Patterns - Session 4</p>
+    <p style="margin-top: 2em;">
+        <a href="/workshops/" class="btn">All Workshops</a>
+    </p>
+</section>
+{% endblock %}

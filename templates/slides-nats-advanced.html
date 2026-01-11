@@ -1,0 +1,580 @@
+{% extends "slides-base.html" %}
+
+{% block title %}JetStream Advanced: KV, Object Store, and Patterns{% endblock %}
+
+{% block extra_styles %}
+.purple { color: #7b1fa2; }
+.cyan { color: #00838f; }
+.kv-box { background: #f3e5f5; border: 2px solid #7b1fa2; border-radius: 10px; padding: 20px; font-family: 'Inter', sans-serif; }
+.kv-box .title { font-weight: 600; font-size: 0.9em; color: #7b1fa2; margin-bottom: 10px; }
+.kv-entry { display: flex; justify-content: space-between; padding: 8px 12px; background: #fff; border-radius: 6px; margin-bottom: 6px; font-size: 0.75em; }
+.kv-entry .key { font-family: 'SF Mono', monospace; color: #7b1fa2; }
+.kv-entry .value { font-family: 'SF Mono', monospace; color: #2c2c2c; }
+.kv-entry .rev { color: #888; font-size: 0.9em; }
+.obj-box { background: #e0f2f1; border: 2px solid #00838f; border-radius: 10px; padding: 20px; font-family: 'Inter', sans-serif; }
+.obj-box .title { font-weight: 600; font-size: 0.9em; color: #00838f; margin-bottom: 10px; }
+.obj-file { display: flex; align-items: center; gap: 12px; padding: 10px 15px; background: #fff; border-radius: 6px; margin-bottom: 8px; }
+.obj-file .icon { font-size: 1.5em; }
+.obj-file .name { font-family: 'SF Mono', monospace; font-size: 0.8em; }
+.obj-file .size { color: #888; font-size: 0.75em; }
+.flow-diagram { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 1.5em 0; }
+.flow-box { padding: 15px 20px; border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 0.7em; font-weight: 500; text-align: center; }
+.flow-box.stream { background: #e3f2fd; border: 2px solid var(--blue); }
+.flow-box.kv { background: #f3e5f5; border: 2px solid #7b1fa2; }
+.flow-box.obj { background: #e0f2f1; border: 2px solid #00838f; }
+.flow-box.mirror { background: #fff3e0; border: 2px solid var(--orange); }
+.flow-box small { display: block; font-size: 0.85em; opacity: 0.8; margin-top: 4px; }
+.flow-arrow { font-size: 1.2em; color: var(--muted); font-family: 'SF Mono', monospace; }
+.mirror-diagram { display: flex; gap: 40px; justify-content: center; align-items: center; margin: 1.5em 0; }
+.region-box { text-align: center; }
+.region-label { font-family: 'Inter', sans-serif; font-size: 0.7em; color: #888; margin-bottom: 8px; }
+.pattern-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 1em 0; }
+.pattern-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.pattern-item .name { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9em; margin-bottom: 8px; }
+.pattern-item .desc { font-size: 0.75em; color: var(--muted); }
+{% endblock %}
+
+{% block slides %}
+<section>
+    <h1>JetStream Advanced</h1>
+    <p>Key-Value, Object Store, and Patterns</p>
+    <p class="meta" style="margin-top: 2em;">Session 3 - NATS Workshop</p>
+    <p style="margin-top: 1em;">
+        <span class="tag">kv store</span>
+        <span class="tag">object store</span>
+        <span class="tag">mirroring</span>
+        <span class="tag">sourcing</span>
+    </p>
+</section>
+
+<section>
+    <h2>Recap: JetStream</h2>
+    <table>
+        <tr>
+            <th>Concept</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>Stream</td>
+            <td>Persist messages to subjects</td>
+        </tr>
+        <tr>
+            <td>Consumer</td>
+            <td>Track reading position</td>
+        </tr>
+        <tr>
+            <td>Ack/Nak</td>
+            <td>Confirm processing</td>
+        </tr>
+        <tr>
+            <td>Replay</td>
+            <td>Start from any point</td>
+        </tr>
+    </table>
+    <p class="muted" style="margin-top: 1em;">JetStream enables more than just message persistence...</p>
+</section>
+
+<section>
+    <h2>Built on JetStream</h2>
+    <div class="flow-diagram">
+        <div class="flow-box stream">Streams<br><small>messages</small></div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box kv">KV Store<br><small>key-value</small></div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box obj">Object Store<br><small>large files</small></div>
+    </div>
+    <div class="intuition-box">
+        <div class="label">Key Insight</div>
+        KV and Object Store are abstractions built on top of streams. Same persistence, same replication, higher-level API.
+    </div>
+</section>
+
+<section>
+    <h2>Key-Value Store</h2>
+    <p>Distributed key-value storage with history</p>
+    <div style="display: flex; justify-content: center; margin: 1.5em 0;">
+        <div class="kv-box" style="min-width: 350px;">
+            <div class="title">config bucket</div>
+            <div class="kv-entry">
+                <span class="key">db.host</span>
+                <span class="value">postgres.local</span>
+                <span class="rev">rev 3</span>
+            </div>
+            <div class="kv-entry">
+                <span class="key">db.port</span>
+                <span class="value">5432</span>
+                <span class="rev">rev 1</span>
+            </div>
+            <div class="kv-entry">
+                <span class="key">cache.ttl</span>
+                <span class="value">3600</span>
+                <span class="rev">rev 2</span>
+            </div>
+        </div>
+    </div>
+    <p class="muted">Each key tracks revision history</p>
+</section>
+
+<section>
+    <h2>Creating a KV Bucket</h2>
+    <pre><code class="language-python">nc = await nats.connect()
+js = nc.jetstream()
+
+# Create KV bucket
+kv = await js.create_key_value(
+    bucket="config",
+    history=5,        # Keep last 5 revisions
+    ttl=3600,         # Optional: expire after 1 hour
+    replicas=3,       # Replication for HA
+)</code></pre>
+</section>
+
+<section>
+    <h2>KV Operations</h2>
+    <pre><code class="language-python"># Put a value
+rev = await kv.put("db.host", b"postgres.local")
+print(f"Stored at revision {rev}")
+
+# Get current value
+entry = await kv.get("db.host")
+print(f"Value: {entry.value}, Rev: {entry.revision}")
+
+# Update (with optimistic locking)
+await kv.update("db.host", b"new-host", last=entry.revision)
+
+# Delete
+await kv.delete("db.host")
+
+# Purge (remove all history)
+await kv.purge("db.host")</code></pre>
+</section>
+
+<section>
+    <h2>Watch for Changes</h2>
+    <pre><code class="language-python"># Watch all keys
+watcher = await kv.watchall()
+
+async for entry in watcher:
+    if entry.operation == "PUT":
+        print(f"Updated: {entry.key} = {entry.value}")
+    elif entry.operation == "DEL":
+        print(f"Deleted: {entry.key}")
+
+# Watch specific key pattern
+watcher = await kv.watch("db.*")</code></pre>
+    <div class="intuition-box">
+        <div class="label">Use Case</div>
+        Configuration management: services watch for config changes and reload automatically.
+    </div>
+</section>
+
+<section>
+    <h2>KV History</h2>
+    <pre><code class="language-python"># Get revision history
+history = await kv.history("db.host")
+
+for entry in history:
+    print(f"Rev {entry.revision}: {entry.value}")
+    print(f"  at {entry.created}")
+
+# Output:
+# Rev 1: b'localhost'
+# Rev 2: b'postgres.local'
+# Rev 3: b'new-postgres.local'</code></pre>
+    <p class="muted">History depth configured with <code>history</code> parameter</p>
+</section>
+
+<section>
+    <h2>KV Use Cases</h2>
+    <div class="pattern-grid">
+        <div class="pattern-item">
+            <div class="name">Configuration</div>
+            <div class="desc">Distributed config with live reload via watch</div>
+        </div>
+        <div class="pattern-item">
+            <div class="name">Feature Flags</div>
+            <div class="desc">Toggle features across services instantly</div>
+        </div>
+        <div class="pattern-item">
+            <div class="name">Service Discovery</div>
+            <div class="desc">Register services, watch for changes</div>
+        </div>
+        <div class="pattern-item">
+            <div class="name">Leader Election</div>
+            <div class="desc">Use revision for compare-and-swap</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Object Store</h2>
+    <p>Store large files, chunked automatically</p>
+    <div style="display: flex; justify-content: center; margin: 1.5em 0;">
+        <div class="obj-box" style="min-width: 350px;">
+            <div class="title">assets bucket</div>
+            <div class="obj-file">
+                <span class="icon">PDF</span>
+                <div>
+                    <div class="name">report-2024.pdf</div>
+                    <div class="size">2.4 MB - 3 chunks</div>
+                </div>
+            </div>
+            <div class="obj-file">
+                <span class="icon">IMG</span>
+                <div>
+                    <div class="name">logo.png</div>
+                    <div class="size">156 KB - 1 chunk</div>
+                </div>
+            </div>
+            <div class="obj-file">
+                <span class="icon">ZIP</span>
+                <div>
+                    <div class="name">backup.zip</div>
+                    <div class="size">50 MB - 50 chunks</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="muted">Files split into chunks, reassembled on read</p>
+</section>
+
+<section>
+    <h2>Object Store Operations</h2>
+    <pre><code class="language-python"># Create object store
+obj = await js.create_object_store("assets")
+
+# Put file
+await obj.put("report.pdf", file_bytes)
+
+# Put from file path
+with open("report.pdf", "rb") as f:
+    await obj.put("report.pdf", f)
+
+# Get file
+result = await obj.get("report.pdf")
+data = result.data
+
+# List objects
+async for info in obj.list():
+    print(f"{info.name}: {info.size} bytes")</code></pre>
+</section>
+
+<section>
+    <h2>Object Metadata</h2>
+    <pre><code class="language-python"># Store with metadata
+meta = ObjectMeta(
+    name="report.pdf",
+    description="Q4 Financial Report",
+    headers={"Content-Type": "application/pdf"}
+)
+await obj.put("report.pdf", data, meta=meta)
+
+# Get info without downloading
+info = await obj.info("report.pdf")
+print(f"Size: {info.size}")
+print(f"Chunks: {info.chunks}")
+print(f"Modified: {info.mtime}")</code></pre>
+</section>
+
+<section>
+    <h2>Object Store Use Cases</h2>
+    <div class="pattern-grid">
+        <div class="pattern-item">
+            <div class="name">File Distribution</div>
+            <div class="desc">Distribute configs, certs, binaries to services</div>
+        </div>
+        <div class="pattern-item">
+            <div class="name">Model Storage</div>
+            <div class="desc">Store ML models, update across inference nodes</div>
+        </div>
+        <div class="pattern-item">
+            <div class="name">Asset Management</div>
+            <div class="desc">Images, documents, media files</div>
+        </div>
+        <div class="pattern-item">
+            <div class="name">Backup/Archive</div>
+            <div class="desc">Replicated storage with clustering</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Work Queues</h2>
+    <p>Task distribution with exactly-once processing</p>
+    <pre><code class="language-python">from nats.js.api import RetentionPolicy
+
+# WorkQueue retention: delete after first ack
+await js.add_stream(
+    name="TASKS",
+    subjects=["tasks.&gt;"],
+    retention=RetentionPolicy.WORK_QUEUE,
+)
+
+# Multiple workers share the load
+await js.subscribe(
+    "tasks.&gt;",
+    queue="workers",
+    durable="task-processor",
+)</code></pre>
+</section>
+
+<section>
+    <h2>Work Queue Flow</h2>
+    <div class="flow-diagram">
+        <div class="flow-box stream">Producer<br><small>tasks.process</small></div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box" style="background: #fff3e0; border: 2px solid #e65100;">
+            TASKS Stream<br><small>WorkQueue retention</small>
+        </div>
+        <div class="flow-arrow">--&gt;</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="flow-box stream" style="opacity: 0.5;">Worker 1</div>
+            <div class="flow-box stream">Worker 2</div>
+            <div class="flow-box stream" style="opacity: 0.5;">Worker 3</div>
+        </div>
+    </div>
+    <p class="muted">Message deleted immediately after ack (not waiting for all consumers)</p>
+</section>
+
+<section>
+    <h2>Stream Mirroring</h2>
+    <p>Replicate streams across clusters for geo-distribution</p>
+    <div class="mirror-diagram">
+        <div class="region-box">
+            <div class="region-label">US-East</div>
+            <div class="flow-box stream">ORDERS<br><small>source</small></div>
+        </div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="region-box">
+            <div class="region-label">EU-West</div>
+            <div class="flow-box mirror">ORDERS<br><small>mirror</small></div>
+        </div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="region-box">
+            <div class="region-label">Asia-Pacific</div>
+            <div class="flow-box mirror">ORDERS<br><small>mirror</small></div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Creating a Mirror</h2>
+    <pre><code class="language-python"># On EU cluster: mirror the US stream
+await js.add_stream(
+    name="ORDERS",
+    mirror=StreamSource(
+        name="ORDERS",
+        domain="us-east",  # Source domain
+    ),
+)
+
+# Mirror is read-only
+# Consumers read locally with low latency
+# Writes go to source stream</code></pre>
+    <div class="intuition-box">
+        <div class="label">Use Case</div>
+        Disaster recovery: if US-East fails, EU-West has full copy.
+    </div>
+</section>
+
+<section>
+    <h2>Stream Sourcing</h2>
+    <p>Aggregate multiple streams into one</p>
+    <div class="flow-diagram">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="flow-box stream">ORDERS-US</div>
+            <div class="flow-box stream">ORDERS-EU</div>
+            <div class="flow-box stream">ORDERS-ASIA</div>
+        </div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box" style="background: #e8f5e9; border: 2px solid var(--green);">
+            ORDERS-GLOBAL<br><small>aggregated</small>
+        </div>
+    </div>
+    <pre><code class="language-python">await js.add_stream(
+    name="ORDERS-GLOBAL",
+    sources=[
+        StreamSource(name="ORDERS-US"),
+        StreamSource(name="ORDERS-EU"),
+        StreamSource(name="ORDERS-ASIA"),
+    ],
+)</code></pre>
+</section>
+
+<section>
+    <h2>Mirror vs Source</h2>
+    <table>
+        <tr>
+            <th>Feature</th>
+            <th>Mirror</th>
+            <th>Source</th>
+        </tr>
+        <tr>
+            <td>Purpose</td>
+            <td>Exact copy</td>
+            <td>Aggregate multiple</td>
+        </tr>
+        <tr>
+            <td>Sources</td>
+            <td>Exactly one</td>
+            <td>One or more</td>
+        </tr>
+        <tr>
+            <td>Writable</td>
+            <td>No (read-only)</td>
+            <td>Yes (can add subjects)</td>
+        </tr>
+        <tr>
+            <td>Use Case</td>
+            <td>DR, geo-distribution</td>
+            <td>Aggregation, fan-in</td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h2>Subject Transforms</h2>
+    <pre><code class="language-python"># Transform subjects when sourcing
+await js.add_stream(
+    name="ORDERS-GLOBAL",
+    sources=[
+        StreamSource(
+            name="ORDERS-US",
+            subject_transforms=[
+                SubjectTransform(
+                    src="orders.&gt;",
+                    dest="us.orders.&gt;"
+                )
+            ]
+        ),
+        StreamSource(
+            name="ORDERS-EU",
+            subject_transforms=[
+                SubjectTransform(
+                    src="orders.&gt;",
+                    dest="eu.orders.&gt;"
+                )
+            ]
+        ),
+    ],
+)</code></pre>
+</section>
+
+<section>
+    <h2>Filtering Sources</h2>
+    <pre><code class="language-python"># Only source specific subjects
+await js.add_stream(
+    name="HIGH-VALUE-ORDERS",
+    sources=[
+        StreamSource(
+            name="ORDERS",
+            filter_subject="orders.premium.&gt;",
+        ),
+    ],
+)
+
+# Combines with subject transforms
+# Great for building derived streams</code></pre>
+</section>
+
+<section>
+    <h2>Putting It Together</h2>
+    <pre><code>Architecture:
+
+Regional Clusters:
+  US:   ORDERS stream (primary)
+  EU:   ORDERS mirror (read-only copy)
+  ASIA: ORDERS mirror (read-only copy)
+
+Central Analytics:
+  ORDERS-GLOBAL sources from all regions
+  Analytics consumers read globally
+
+Task Processing:
+  TASKS stream with WorkQueue retention
+  Workers in each region process locally</code></pre>
+</section>
+
+<section>
+    <h2>Interactive Demo</h2>
+    <p>Explore KV Store, Object Store, and stream patterns:</p>
+    <a href="/demo-nats-advanced/" class="btn">Launch Demo</a>
+    <p class="muted" style="margin-top: 1.5em; font-size: 0.8em;">Interactive visualization of advanced JetStream concepts</p>
+</section>
+
+<section>
+    <h2>Summary</h2>
+    <table>
+        <tr>
+            <th>Feature</th>
+            <th>What It Does</th>
+        </tr>
+        <tr>
+            <td>KV Store</td>
+            <td>Key-value with history, watch, TTL</td>
+        </tr>
+        <tr>
+            <td>Object Store</td>
+            <td>Large files, chunked, metadata</td>
+        </tr>
+        <tr>
+            <td>WorkQueue</td>
+            <td>Task processing, delete on ack</td>
+        </tr>
+        <tr>
+            <td>Mirror</td>
+            <td>Exact copy for DR/geo</td>
+        </tr>
+        <tr>
+            <td>Source</td>
+            <td>Aggregate multiple streams</td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h2>Key Takeaway</h2>
+    <div class="formula-box" style="font-size: 1em;">Streams + Abstraction = Data Platform</div>
+    <div class="algo-steps" style="margin-top: 2em;">
+        <div class="algo-step">
+            <div class="step-num">1</div>
+            <div class="step-content">KV for configuration and coordination</div>
+        </div>
+        <div class="algo-step">
+            <div class="step-num">2</div>
+            <div class="step-content">Object Store for files and artifacts</div>
+        </div>
+        <div class="algo-step">
+            <div class="step-num">3</div>
+            <div class="step-content">Mirrors and sources for distribution</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Resources</h2>
+    <ul>
+        <li><a href="/the-nats-advanced/">Essay: Advanced JetStream Patterns</a></li>
+        <li><a href="/demo-nats-advanced/">Interactive Demo</a></li>
+        <li><a href="https://docs.nats.io/nats-concepts/jetstream/key-value-store">KV Store Documentation</a></li>
+        <li><a href="https://docs.nats.io/nats-concepts/jetstream/obj_store">Object Store Documentation</a></li>
+    </ul>
+</section>
+
+<section>
+    <h2>Next Session</h2>
+    <h3 class="purple">Production Patterns</h3>
+    <ul style="margin-top: 1.5em;">
+        <li>Services Framework for microservices</li>
+        <li>Error handling and reconnection</li>
+        <li>Security: TLS, auth, accounts</li>
+        <li>Monitoring and observability</li>
+        <li>Event sourcing, CQRS, Saga patterns</li>
+    </ul>
+</section>
+
+<section>
+    <h1>Questions?</h1>
+    <p class="meta">JetStream Advanced - Session 3</p>
+</section>
+{% endblock %}

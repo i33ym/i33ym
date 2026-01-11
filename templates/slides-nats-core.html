@@ -1,0 +1,402 @@
+{% extends "slides-base.html" %}
+
+{% block title %}NATS Core Fundamentals{% endblock %}
+
+{% block extra_styles %}
+.purple { color: #7b1fa2; }
+.cyan { color: #00838f; }
+.subject-example { font-family: 'SF Mono', Consolas, monospace; font-size: 0.9em; background: var(--code-bg); padding: 15px 25px; border-radius: 8px; margin: 10px 0; display: inline-block; }
+.comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 1em 0; }
+.comparison-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+.comparison-item .name { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9em; margin-bottom: 10px; }
+.comparison-item .desc { font-size: 0.7em; color: var(--muted); }
+.flow-diagram { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 1.5em 0; }
+.flow-box { padding: 15px 25px; border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 0.75em; font-weight: 500; }
+.flow-box.publisher { background: #e3f2fd; border: 2px solid var(--blue); }
+.flow-box.nats { background: #f3e5f5; border: 2px solid #7b1fa2; }
+.flow-box.subscriber { background: #e8f5e9; border: 2px solid var(--green); }
+.flow-box small { font-size: 0.85em; opacity: 0.8; }
+.flow-arrow { font-size: 1.2em; color: var(--muted); font-family: 'SF Mono', monospace; }
+.pipeline-step.blue { background: var(--blue); }
+.pipeline-step.green { background: var(--green); }
+.pipeline-step.purple { background: #7b1fa2; }
+{% endblock %}
+
+{% block slides %}
+<section>
+    <h1>NATS Core Fundamentals</h1>
+    <p class="meta">Session 1 - Messaging Patterns</p>
+    <p style="margin-top: 2em;">
+        <span class="tag">pub/sub</span>
+        <span class="tag">request/reply</span>
+        <span class="tag">queue groups</span>
+        <span class="tag">subjects</span>
+    </p>
+</section>
+
+<section>
+    <h2>What is NATS?</h2>
+    <p style="max-width: 800px; margin: 0 auto;">
+        A <span class="bold">connective technology</span> for modern distributed systems.
+        Simple, fast, and lightweight messaging.
+    </p>
+    <div style="margin-top: 2em;">
+        <div class="big-num">14M+</div>
+        <p class="muted">messages per second (single server)</p>
+    </div>
+</section>
+
+<section>
+    <h2>Why NATS?</h2>
+    <table>
+        <tr>
+            <th>Feature</th>
+            <th>NATS</th>
+            <th>Kafka</th>
+            <th>RabbitMQ</th>
+        </tr>
+        <tr>
+            <td>Latency</td>
+            <td><span class="score-good">~100us</span></td>
+            <td><span class="score-mid">~5ms</span></td>
+            <td><span class="score-mid">~1ms</span></td>
+        </tr>
+        <tr>
+            <td>Binary Size</td>
+            <td><span class="score-good">20MB</span></td>
+            <td><span class="score-bad">100MB+</span></td>
+            <td><span class="score-mid">50MB</span></td>
+        </tr>
+        <tr>
+            <td>Memory</td>
+            <td><span class="score-good">10-50MB</span></td>
+            <td><span class="score-bad">1GB+</span></td>
+            <td><span class="score-mid">128MB+</span></td>
+        </tr>
+        <tr>
+            <td>Setup</td>
+            <td><span class="score-good">Single binary</span></td>
+            <td><span class="score-bad">ZooKeeper</span></td>
+            <td><span class="score-mid">Erlang</span></td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h2>Subject-Based Addressing</h2>
+    <p>Messages are published to <span class="bold">subjects</span>, not queues or topics.</p>
+    <div class="subject-example">orders.new</div>
+    <div class="subject-example">orders.us.east.fulfilled</div>
+    <div class="subject-example">sensors.temperature.room42</div>
+    <div class="intuition-box" style="margin-top: 1.5em;">
+        <div class="label">Key Insight</div>
+        Subjects are like addresses. Publishers send to addresses. Subscribers listen on addresses. No broker configuration needed.
+    </div>
+</section>
+
+<section>
+    <h2>Subject Hierarchy</h2>
+    <p>Use <code>.</code> as delimiter to create hierarchies:</p>
+    <pre><code>company.department.action
+
+orders.new
+orders.fulfilled
+orders.cancelled
+
+payments.processed
+payments.failed</code></pre>
+    <p class="muted" style="font-size: 0.8em;">Enables powerful wildcard subscriptions</p>
+</section>
+
+<section>
+    <h2>Wildcards</h2>
+    <div class="two-col">
+        <div>
+            <h3><code>*</code> Single Token</h3>
+            <pre><code>orders.*
+  orders.new       OK
+  orders.fulfilled OK
+  orders.us.new    NO</code></pre>
+        </div>
+        <div>
+            <h3><code>&gt;</code> Multiple Tokens</h3>
+            <pre><code>orders.&gt;
+  orders.new         OK
+  orders.fulfilled   OK
+  orders.us.east.new OK</code></pre>
+        </div>
+    </div>
+    <p style="margin-top: 1em;"><code>&gt;</code> must be the last token</p>
+</section>
+
+<section>
+    <h2>Pattern 1: Publish/Subscribe</h2>
+    <div class="flow-diagram">
+        <div class="flow-box publisher">Publisher</div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box nats">NATS<br><small>orders.new</small></div>
+        <div class="flow-arrow">--&gt;</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="flow-box subscriber">Subscriber A</div>
+            <div class="flow-box subscriber">Subscriber B</div>
+            <div class="flow-box subscriber">Subscriber C</div>
+        </div>
+    </div>
+    <p class="muted">All subscribers receive every message (fan-out)</p>
+</section>
+
+<section>
+    <h2>Pub/Sub in Python</h2>
+    <pre><code class="language-python">import asyncio
+import nats
+
+async def main():
+    nc = await nats.connect("nats://localhost:4222")
+    
+    async def handler(msg):
+        print(f"Received: {msg.data.decode()}")
+    
+    await nc.subscribe("orders.&gt;", cb=handler)
+    await nc.publish("orders.new", b"Order #123")
+    
+    await asyncio.sleep(1)
+    await nc.close()
+
+asyncio.run(main())</code></pre>
+</section>
+
+<section>
+    <h2>Pattern 2: Queue Groups</h2>
+    <div class="flow-diagram">
+        <div class="flow-box publisher">Publisher</div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box nats">NATS<br><small>queue: workers</small></div>
+        <div class="flow-arrow">--&gt;</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="flow-box subscriber" style="opacity: 0.4;">Worker 1</div>
+            <div class="flow-box subscriber">Worker 2</div>
+            <div class="flow-box subscriber" style="opacity: 0.4;">Worker 3</div>
+        </div>
+    </div>
+    <p class="muted">Only ONE subscriber receives each message (load balancing)</p>
+</section>
+
+<section>
+    <h2>Queue Groups in Python</h2>
+    <pre><code class="language-python">async def worker(nc, worker_id):
+    async def handler(msg):
+        print(f"Worker {worker_id}: {msg.data.decode()}")
+    
+    # Join queue group "workers"
+    await nc.subscribe("tasks", queue="workers", cb=handler)
+
+# NATS automatically load-balances between workers</code></pre>
+    <div class="intuition-box">
+        <div class="label">Use Case</div>
+        Scale horizontally: just start more workers. NATS handles distribution.
+    </div>
+</section>
+
+<section>
+    <h2>Pattern 3: Request/Reply</h2>
+    <div class="flow-diagram">
+        <div class="flow-box publisher">Client</div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box nats">NATS</div>
+        <div class="flow-arrow">--&gt;</div>
+        <div class="flow-box subscriber">Service</div>
+    </div>
+    <div class="flow-diagram" style="margin-top: 0;">
+        <div class="flow-box publisher">Client</div>
+        <div class="flow-arrow">&lt;--</div>
+        <div class="flow-box nats">NATS</div>
+        <div class="flow-arrow">&lt;--</div>
+        <div class="flow-box subscriber">Service</div>
+    </div>
+    <p class="muted">Synchronous RPC over async messaging</p>
+</section>
+
+<section>
+    <h2>Request/Reply in Python</h2>
+    <pre><code class="language-python"># Service
+async def service(nc):
+    async def handler(msg):
+        response = f"Processed: {msg.data.decode()}"
+        await nc.publish(msg.reply, response.encode())
+    
+    await nc.subscribe("api.process", cb=handler)
+
+# Client
+resp = await nc.request("api.process", b"data", timeout=1.0)
+print(f"Got: {resp.data.decode()}")</code></pre>
+</section>
+
+<section>
+    <h2>Message Structure</h2>
+    <pre><code>Subject:    orders.new              (required)
+Reply-To:   _INBOX.xyz123           (optional)
+Headers:    {"X-Trace-Id": "abc"}   (optional)
+Payload:    {"id": 123, ...}        (bytes, max 1MB)</code></pre>
+    <ul style="font-size: 0.85em; margin-top: 1em;">
+        <li><strong>Subject:</strong> Address for routing</li>
+        <li><strong>Reply-To:</strong> For request/reply pattern</li>
+        <li><strong>Headers:</strong> Metadata (compression, tracing)</li>
+        <li><strong>Payload:</strong> Your data (JSON, Protobuf, etc.)</li>
+    </ul>
+</section>
+
+<section>
+    <h2>Core NATS: At-Most-Once</h2>
+    <div class="formula-box">Fire and Forget</div>
+    <ul style="margin-top: 1.5em;">
+        <li>Messages delivered to <strong>active</strong> subscribers only</li>
+        <li>No persistence - if no one listening, message is gone</li>
+        <li>No acknowledgments in core NATS</li>
+        <li>Extremely fast (14M+ msg/sec)</li>
+    </ul>
+    <p class="muted" style="margin-top: 1em;">Need persistence? That is JetStream (Session 2)</p>
+</section>
+
+<section>
+    <h2>Connection Management</h2>
+    <pre><code class="language-python">nc = await nats.connect(
+    servers=["nats://localhost:4222"],
+    reconnect_time_wait=2,
+    max_reconnect_attempts=-1,
+    ping_interval=20,
+)
+
+nc.on_disconnect = lambda: print("Disconnected!")
+nc.on_reconnect = lambda: print("Reconnected!")
+
+await nc.drain()  # Graceful shutdown</code></pre>
+</section>
+
+<section>
+    <h2>Error Handling</h2>
+    <pre><code class="language-python">from nats.errors import TimeoutError, NoRespondersError
+
+try:
+    resp = await nc.request("api.users", b"get", timeout=1.0)
+except TimeoutError:
+    print("Service did not respond in time")
+except NoRespondersError:
+    print("No service listening on this subject")</code></pre>
+</section>
+
+<section>
+    <h2>Three Core Patterns</h2>
+    <div class="comparison-grid">
+        <div class="comparison-item">
+            <div class="name blue">Pub/Sub</div>
+            <div class="desc">1 to N<br>Fan-out to all subscribers</div>
+        </div>
+        <div class="comparison-item">
+            <div class="name green">Queue Groups</div>
+            <div class="desc">1 to 1 of N<br>Load balance to one worker</div>
+        </div>
+        <div class="comparison-item">
+            <div class="name purple">Request/Reply</div>
+            <div class="desc">1 to 1 to 1<br>Sync RPC with response</div>
+        </div>
+    </div>
+    <p class="muted">Mix and match: queue group of services handling requests</p>
+</section>
+
+<section>
+    <h2>Real-World: Payment Gateway</h2>
+    <pre><code>Subjects:
+  payments.initiated
+  payments.{provider}.result
+  payments.completed
+  payments.failed
+
+Queue Groups:
+  payments.initiated  queue="processors"
+
+Request/Reply:
+  api.balance.check   Balance Service</code></pre>
+</section>
+
+<section>
+    <h2>Interactive Demo</h2>
+    <p>Try pub/sub, wildcards, queue groups, and request/reply live:</p>
+    <a href="/demo-nats-core/" class="btn">Launch Demo</a>
+    <p class="muted" style="margin-top: 1.5em; font-size: 0.8em;">Connected to live NATS server at wss://i33ym.cc/ws/nats</p>
+</section>
+
+<section>
+    <h2>Summary</h2>
+    <table>
+        <tr>
+            <th>Concept</th>
+            <th>What It Does</th>
+        </tr>
+        <tr>
+            <td>Subject</td>
+            <td>Address for routing messages</td>
+        </tr>
+        <tr>
+            <td>Wildcards (* &gt;)</td>
+            <td>Subscribe to multiple subjects</td>
+        </tr>
+        <tr>
+            <td>Pub/Sub</td>
+            <td>Fan-out to all subscribers</td>
+        </tr>
+        <tr>
+            <td>Queue Group</td>
+            <td>Load balance between workers</td>
+        </tr>
+        <tr>
+            <td>Request/Reply</td>
+            <td>Synchronous RPC pattern</td>
+        </tr>
+    </table>
+</section>
+
+<section>
+    <h2>Key Takeaway</h2>
+    <div class="formula-box" style="font-size: 1em;">Subject + Pattern = Architecture</div>
+    <div class="algo-steps" style="margin-top: 2em;">
+        <div class="algo-step">
+            <div class="step-num">1</div>
+            <div class="step-content">Design your subject hierarchy</div>
+        </div>
+        <div class="algo-step">
+            <div class="step-num">2</div>
+            <div class="step-content">Choose pattern: pub/sub, queue, or request/reply</div>
+        </div>
+        <div class="algo-step">
+            <div class="step-num">3</div>
+            <div class="step-content">Scale by adding subscribers</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Resources</h2>
+    <ul>
+        <li><a href="/the-nats-core/">Essay: NATS Core Deep Dive</a></li>
+        <li><a href="/demo-nats-core/">Interactive Demo</a></li>
+        <li><a href="https://docs.nats.io">Official NATS Documentation</a></li>
+        <li><a href="https://github.com/nats-io/nats.py">nats.py - Python Client</a></li>
+    </ul>
+</section>
+
+<section>
+    <h2>Next Session</h2>
+    <h3 class="purple">JetStream: Persistence and Streaming</h3>
+    <ul style="margin-top: 1.5em;">
+        <li>Streams and message persistence</li>
+        <li>Consumers: push vs pull</li>
+        <li>At-least-once and exactly-once delivery</li>
+        <li>Replay and acknowledgments</li>
+    </ul>
+</section>
+
+<section>
+    <h1>Questions?</h1>
+    <p class="meta">NATS Core Fundamentals - Session 1</p>
+</section>
+{% endblock %}

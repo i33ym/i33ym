@@ -20,7 +20,15 @@ urlpatterns = [
     path("demo-adaline/", TemplateView.as_view(template_name="demo-adaline.html"), name="demo-adaline"),
     path("slides-adaline/", TemplateView.as_view(template_name="slides-adaline.html"), name="slides-adaline"),
     path("demo-backpropogation/", TemplateView.as_view(template_name="demo-backpropogation.html"), name="demo-backpropogation"),
+    path("demo-nats-core/", TemplateView.as_view(template_name="demo-nats-core.html"), name="demo-nats-core"),
+    path("demo-nats-jetstream/", TemplateView.as_view(template_name="demo-nats-jetstream.html"), name="demo-nats-jetstream"),
+    path("demo-nats-advanced/", TemplateView.as_view(template_name="demo-nats-advanced.html"), name="demo-nats-advanced"),
+    path("demo-nats-production/", TemplateView.as_view(template_name="demo-nats-production.html"), name="demo-nats-production"),
     path("slides-backpropogation/", TemplateView.as_view(template_name="slides-backpropogation.html"), name="slides-backpropogation"),
+    path("slides-nats-core/", TemplateView.as_view(template_name="slides-nats-core.html"), name="slides-nats-core"),
+    path("slides-nats-jetstream/", TemplateView.as_view(template_name="slides-nats-jetstream.html"), name="slides-nats-jetstream"),
+    path("slides-nats-advanced/", TemplateView.as_view(template_name="slides-nats-advanced.html"), name="slides-nats-advanced"),
+    path("slides-nats-production/", TemplateView.as_view(template_name="slides-nats-production.html"), name="slides-nats-production"),
     path("", include("apps.articles.urls")),
 ]
 

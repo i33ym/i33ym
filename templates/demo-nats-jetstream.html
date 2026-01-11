@@ -1,0 +1,686 @@
+{% extends "demo-base.html" %}
+
+{% block demo_title %}JetStream Demo{% endblock %}
+{% block demo_subtitle %}Explore streams, consumers, persistence, and message acknowledgment{% endblock %}
+{% block back_link %}/slides-nats-jetstream/{% endblock %}
+{% block back_text %}back to slides{% endblock %}
+
+{% block demo_styles %}
+.demo-container { max-width: 1100px; }
+.connection-bar { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px; padding: 12px 20px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; }
+.connection-status { display: flex; align-items: center; gap: 8px; font-family: 'Inter', sans-serif; font-size: 13px; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #2e7d32; }
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; background: #fff; padding: 4px; border-radius: 10px; border: 1px solid #e0e0e0; }
+.tab { flex: 1; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; padding: 10px 16px; border: none; background: transparent; cursor: pointer; border-radius: 8px; transition: all 0.2s; color: #888; }
+.tab:hover { background: #f0f0f0; color: #2c2c2c; }
+.tab.active { background: #2c2c2c; color: #fff; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.panel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; }
+.input-group { margin-bottom: 15px; }
+.input-group label { display: block; font-family: 'Inter', sans-serif; font-size: 12px; color: #666; margin-bottom: 6px; }
+.input-group input, .input-group select { width: 100%; font-family: 'SF Mono', Consolas, monospace; font-size: 13px; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; }
+.input-group select { font-family: 'Inter', sans-serif; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.hint { font-family: 'Inter', sans-serif; font-size: 12px; color: #888; margin-top: 10px; line-height: 1.5; }
+.hint code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+.stream-viz { background: #e3f2fd; border: 2px solid #1565c0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.stream-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-family: 'Inter', sans-serif; }
+.stream-name { font-weight: 600; font-size: 16px; color: #1565c0; }
+.stream-stats { font-size: 12px; color: #666; }
+.stream-messages { display: flex; gap: 6px; flex-wrap: wrap; min-height: 50px; align-items: center; padding: 10px; background: rgba(255,255,255,0.7); border-radius: 8px; }
+.stream-msg { width: 40px; height: 40px; background: #1565c0; color: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', monospace; font-size: 12px; font-weight: 600; position: relative; cursor: pointer; transition: transform 0.2s; }
+.stream-msg:hover { transform: scale(1.1); }
+.stream-msg.acked { background: #2e7d32; }
+.stream-msg.pending { background: #e65100; }
+.stream-msg.selected { box-shadow: 0 0 0 3px #ffd600; }
+.stream-empty { color: #888; font-family: 'Inter', sans-serif; font-size: 13px; }
+.consumers-area { display: flex; gap: 15px; flex-wrap: wrap; }
+.consumer-card { background: #e8f5e9; border: 2px solid #2e7d32; border-radius: 10px; padding: 15px; min-width: 150px; text-align: center; font-family: 'Inter', sans-serif; }
+.consumer-card.inactive { background: #f5f5f5; border-color: #ccc; opacity: 0.6; }
+.consumer-name { font-weight: 600; font-size: 14px; color: #2e7d32; margin-bottom: 8px; }
+.consumer-card.inactive .consumer-name { color: #888; }
+.consumer-position { font-family: 'SF Mono', monospace; font-size: 18px; font-weight: 600; color: #1565c0; }
+.consumer-pending { font-size: 11px; color: #e65100; margin-top: 4px; }
+.consumer-actions { margin-top: 10px; display: flex; gap: 5px; justify-content: center; }
+.consumer-actions button { font-size: 11px; padding: 4px 8px; }
+.message-detail { background: #f5f5f5; border-radius: 8px; padding: 15px; margin-top: 15px; font-family: 'SF Mono', monospace; font-size: 12px; }
+.message-detail .label { color: #888; }
+.message-detail .value { color: #2c2c2c; margin-left: 10px; }
+.replay-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+.replay-controls select { width: auto; }
+.ack-demo { display: flex; gap: 20px; align-items: flex-start; margin: 20px 0; }
+.ack-message { background: #fff3e0; border: 2px solid #e65100; border-radius: 10px; padding: 20px; text-align: center; min-width: 150px; }
+.ack-message.processing { border-color: #1565c0; background: #e3f2fd; }
+.ack-message.acked { border-color: #2e7d32; background: #e8f5e9; }
+.ack-message.naked { border-color: #c62828; background: #ffebee; }
+.ack-message .seq { font-family: 'SF Mono', monospace; font-size: 24px; font-weight: 600; }
+.ack-message .status { font-family: 'Inter', sans-serif; font-size: 12px; color: #666; margin-top: 5px; }
+.ack-buttons { display: flex; flex-direction: column; gap: 8px; }
+.ack-buttons button { font-size: 12px; }
+.dedup-demo { margin-top: 20px; }
+.dedup-row { display: flex; align-items: center; gap: 15px; padding: 10px; background: #f5f5f5; border-radius: 6px; margin-bottom: 8px; font-family: 'Inter', sans-serif; font-size: 13px; }
+.dedup-row .msg-id { font-family: 'SF Mono', monospace; color: #7b1fa2; }
+.dedup-row .result { font-weight: 500; }
+.dedup-row .result.new { color: #2e7d32; }
+.dedup-row .result.dup { color: #e65100; }
+.log-area { height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 6px; padding: 12px; font-family: 'SF Mono', Consolas, monospace; font-size: 12px; margin-top: 15px; }
+.log-entry { margin-bottom: 6px; line-height: 1.5; }
+.log-entry.pub { color: #81c784; }
+.log-entry.consume { color: #64b5f6; }
+.log-entry.ack { color: #a5d6a7; }
+.log-entry.nak { color: #ef9a9a; }
+.log-entry.info { color: #888; }
+.log-time { color: #666; margin-right: 8px; }
+@media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } .ack-demo { flex-direction: column; } }
+{% endblock %}
+
+{% block demo_content %}
+<div class="connection-bar">
+    <div class="connection-status">
+        <div class="status-dot"></div>
+        <span>JetStream Simulation</span>
+    </div>
+    <span style="font-family: 'Inter', sans-serif; font-size: 12px; color: #888;">Interactive visualization of JetStream concepts</span>
+</div>
+
+<div class="tabs">
+    <button class="tab active" data-tab="streams">Streams</button>
+    <button class="tab" data-tab="consumers">Consumers</button>
+    <button class="tab" data-tab="acks">Acknowledgments</button>
+    <button class="tab" data-tab="replay">Replay</button>
+    <button class="tab" data-tab="dedup">Deduplication</button>
+</div>
+
+<div class="tab-content active" id="streams">
+    <div class="stream-viz">
+        <div class="stream-header">
+            <span class="stream-name">ORDERS Stream</span>
+            <span class="stream-stats">subjects: orders.&gt; | <span id="streamMsgCount">0</span> messages</span>
+        </div>
+        <div class="stream-messages" id="streamMessages">
+            <span class="stream-empty">No messages yet. Publish some!</span>
+        </div>
+    </div>
+    
+    <div class="main-grid">
+        <div class="panel">
+            <div class="panel-title">Publish to Stream</div>
+            <div class="input-group">
+                <label>Subject</label>
+                <input type="text" id="streamSubject" value="orders.new" placeholder="orders.new">
+            </div>
+            <div class="input-group">
+                <label>Payload</label>
+                <input type="text" id="streamPayload" value='{"id": 1, "item": "Widget"}' placeholder="Message data">
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="publishStreamBtn">Publish</button>
+                <button class="btn btn-secondary" id="publish5Btn">Publish 5</button>
+            </div>
+            <div class="hint">Messages are persisted in the stream with sequence numbers.</div>
+        </div>
+        <div class="panel">
+            <div class="panel-title">Stream Info</div>
+            <div id="selectedMsgInfo" class="message-detail" style="display: none;">
+                <div><span class="label">Seq:</span><span class="value" id="msgSeq">-</span></div>
+                <div><span class="label">Subject:</span><span class="value" id="msgSubject">-</span></div>
+                <div><span class="label">Time:</span><span class="value" id="msgTime">-</span></div>
+                <div><span class="label">Data:</span><span class="value" id="msgData">-</span></div>
+            </div>
+            <div id="noMsgSelected" class="hint">Click on a message in the stream to see details.</div>
+            <div class="btn-row" style="margin-top: 15px;">
+                <button class="btn btn-danger" id="purgeStreamBtn">Purge Stream</button>
+            </div>
+        </div>
+    </div>
+    <div class="log-area" id="streamLog"></div>
+</div>
+
+<div class="tab-content" id="consumers">
+    <div class="stream-viz">
+        <div class="stream-header">
+            <span class="stream-name">ORDERS Stream</span>
+            <span class="stream-stats"><span id="consumerStreamCount">0</span> messages</span>
+        </div>
+        <div class="stream-messages" id="consumerStreamMessages">
+            <span class="stream-empty">No messages in stream</span>
+        </div>
+    </div>
+    
+    <div class="panel-title">Consumers</div>
+    <div class="consumers-area" id="consumersArea">
+        <div class="hint">No consumers yet. Create one below.</div>
+    </div>
+    
+    <div class="main-grid" style="margin-top: 20px;">
+        <div class="panel">
+            <div class="panel-title">Create Consumer</div>
+            <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="consumerName" value="processor" placeholder="consumer-name">
+            </div>
+            <div class="input-group">
+                <label>Type</label>
+                <select id="consumerType">
+                    <option value="durable">Durable (survives restart)</option>
+                    <option value="ephemeral">Ephemeral (temporary)</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" id="createConsumerBtn">Create Consumer</button>
+        </div>
+        <div class="panel">
+            <div class="panel-title">Consumer Actions</div>
+            <div class="hint">Each consumer tracks its own position independently. Click "Next" on a consumer to fetch and ack the next message.</div>
+            <div class="btn-row" style="margin-top: 15px;">
+                <button class="btn btn-secondary" id="addStreamMsgsBtn">Add 3 Messages</button>
+            </div>
+        </div>
+    </div>
+    <div class="log-area" id="consumerLog"></div>
+</div>
+
+<div class="tab-content" id="acks">
+    <div class="panel">
+        <div class="panel-title">Acknowledgment Demo</div>
+        <p style="font-family: Inter, sans-serif; font-size: 13px; color: #666; margin-bottom: 20px;">
+            Fetch a message from the stream, then choose how to acknowledge it.
+        </p>
+        
+        <div class="ack-demo">
+            <div class="ack-message" id="ackMessage">
+                <div class="seq" id="ackSeq">-</div>
+                <div class="status" id="ackStatus">No message fetched</div>
+            </div>
+            <div class="ack-buttons">
+                <button class="btn btn-primary" id="fetchMsgBtn">Fetch Next</button>
+                <button class="btn btn-secondary" id="ackBtn" disabled>ack() - Success</button>
+                <button class="btn btn-secondary" id="nakBtn" disabled>nak() - Retry now</button>
+                <button class="btn btn-danger" id="termBtn" disabled>term() - Give up</button>
+                <button class="btn btn-secondary" id="inProgressBtn" disabled>in_progress() - Need time</button>
+            </div>
+        </div>
+        
+        <div class="hint">
+            <strong>ack()</strong> - Message processed successfully, move on<br>
+            <strong>nak()</strong> - Processing failed, redeliver immediately<br>
+            <strong>term()</strong> - Permanent failure, do not retry<br>
+            <strong>in_progress()</strong> - Still working, extend ack timeout
+        </div>
+    </div>
+    
+    <div class="panel" style="margin-top: 20px;">
+        <div class="panel-title">Message Queue</div>
+        <div class="stream-messages" id="ackStreamMessages" style="background: #f5f5f5; border-radius: 8px; padding: 15px;">
+            <span class="stream-empty">Click "Add Messages" to populate</span>
+        </div>
+        <div class="btn-row" style="margin-top: 15px;">
+            <button class="btn btn-secondary" id="addAckMsgsBtn">Add 5 Messages</button>
+            <button class="btn btn-danger" id="clearAckMsgsBtn">Clear</button>
+        </div>
+    </div>
+    <div class="log-area" id="ackLog"></div>
+</div>
+
+<div class="tab-content" id="replay">
+    <div class="stream-viz">
+        <div class="stream-header">
+            <span class="stream-name">EVENTS Stream</span>
+            <span class="stream-stats"><span id="replayStreamCount">10</span> messages</span>
+        </div>
+        <div class="stream-messages" id="replayStreamMessages"></div>
+    </div>
+    
+    <div class="panel">
+        <div class="panel-title">Replay Policy</div>
+        <p style="font-family: Inter, sans-serif; font-size: 13px; color: #666; margin-bottom: 15px;">
+            Choose where a new consumer should start reading from:
+        </p>
+        
+        <div class="replay-controls">
+            <select id="replayPolicy">
+                <option value="all">DeliverPolicy.ALL - From beginning</option>
+                <option value="last">DeliverPolicy.LAST - Last message only</option>
+                <option value="new">DeliverPolicy.NEW - Only new messages</option>
+                <option value="seq">DeliverPolicy.BY_START_SEQUENCE - From seq #</option>
+            </select>
+            <input type="number" id="replaySeq" value="5" min="1" max="10" style="width: 80px; display: none;">
+            <button class="btn btn-primary" id="createReplayConsumerBtn">Create Consumer</button>
+        </div>
+        
+        <div id="replayResult" style="margin-top: 20px;"></div>
+    </div>
+    <div class="log-area" id="replayLog"></div>
+</div>
+
+<div class="tab-content" id="dedup">
+    <div class="panel">
+        <div class="panel-title">Exactly-Once with Deduplication</div>
+        <p style="font-family: Inter, sans-serif; font-size: 13px; color: #666; margin-bottom: 15px;">
+            Use <code>Nats-Msg-Id</code> header to prevent duplicates. If the same ID is published twice, the server returns the existing sequence number.
+        </p>
+        
+        <div class="input-group">
+            <label>Message ID (Nats-Msg-Id)</label>
+            <input type="text" id="dedupMsgId" value="order-123" placeholder="unique-message-id">
+        </div>
+        <div class="input-group">
+            <label>Payload</label>
+            <input type="text" id="dedupPayload" value='{"order": 123}' placeholder="Message data">
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" id="dedupPublishBtn">Publish with ID</button>
+            <button class="btn btn-secondary" id="dedupPublishAgainBtn">Publish Same ID Again</button>
+        </div>
+        
+        <div class="dedup-demo" id="dedupResults"></div>
+    </div>
+    
+    <div class="panel" style="margin-top: 20px;">
+        <div class="panel-title">How It Works</div>
+        <div class="hint">
+            1. Publisher sends message with <code>Nats-Msg-Id: order-123</code><br>
+            2. Server stores message, returns <code>seq: 1</code><br>
+            3. Network fails, publisher retries with same ID<br>
+            4. Server recognizes duplicate, returns existing <code>seq: 1</code><br>
+            5. No duplicate stored - exactly-once achieved!
+        </div>
+    </div>
+    <div class="log-area" id="dedupLog"></div>
+</div>
+{% endblock %}
+
+{% block demo_script %}
+<script>
+// Simulated JetStream state
+let streamMessages = [];
+let streamSeq = 0;
+let consumers = {};
+let ackMessages = [];
+let ackSeq = 0;
+let currentAckMsg = null;
+let dedupStore = {};
+let dedupSeq = 0;
+
+// Stream Tab
+function renderStreamMessages() {
+    const container = document.getElementById('streamMessages');
+    const count = document.getElementById('streamMsgCount');
+    count.textContent = streamMessages.length;
+    
+    if (streamMessages.length === 0) {
+        container.innerHTML = '<span class="stream-empty">No messages yet. Publish some!</span>';
+        return;
+    }
+    
+    container.innerHTML = streamMessages.map(m => 
+        `<div class="stream-msg" data-seq="${m.seq}" onclick="selectMessage(${m.seq})">${m.seq}</div>`
+    ).join('');
+}
+
+function selectMessage(seq) {
+    const msg = streamMessages.find(m => m.seq === seq);
+    if (!msg) return;
+    
+    document.querySelectorAll('.stream-msg').forEach(el => el.classList.remove('selected'));
+    document.querySelector(`.stream-msg[data-seq="${seq}"]`)?.classList.add('selected');
+    
+    document.getElementById('selectedMsgInfo').style.display = 'block';
+    document.getElementById('noMsgSelected').style.display = 'none';
+    document.getElementById('msgSeq').textContent = msg.seq;
+    document.getElementById('msgSubject').textContent = msg.subject;
+    document.getElementById('msgTime').textContent = msg.time;
+    document.getElementById('msgData').textContent = msg.data;
+}
+
+document.getElementById('publishStreamBtn').addEventListener('click', () => {
+    const subject = document.getElementById('streamSubject').value;
+    const payload = document.getElementById('streamPayload').value;
+    streamSeq++;
+    const msg = { seq: streamSeq, subject, data: payload, time: new Date().toLocaleTimeString() };
+    streamMessages.push(msg);
+    renderStreamMessages();
+    log('streamLog', 'pub', `Published seq=${streamSeq} to ${subject}`);
+    syncConsumerStream();
+});
+
+document.getElementById('publish5Btn').addEventListener('click', () => {
+    for (let i = 0; i < 5; i++) {
+        streamSeq++;
+        const msg = { seq: streamSeq, subject: 'orders.new', data: `{"id": ${streamSeq}}`, time: new Date().toLocaleTimeString() };
+        streamMessages.push(msg);
+    }
+    renderStreamMessages();
+    log('streamLog', 'pub', `Published 5 messages (seq ${streamSeq-4} to ${streamSeq})`);
+    syncConsumerStream();
+});
+
+document.getElementById('purgeStreamBtn').addEventListener('click', () => {
+    streamMessages = [];
+    streamSeq = 0;
+    renderStreamMessages();
+    document.getElementById('selectedMsgInfo').style.display = 'none';
+    document.getElementById('noMsgSelected').style.display = 'block';
+    log('streamLog', 'info', 'Stream purged');
+    syncConsumerStream();
+    Object.keys(consumers).forEach(name => consumers[name].position = 0);
+    renderConsumers();
+});
+
+// Consumers Tab
+function syncConsumerStream() {
+    const container = document.getElementById('consumerStreamMessages');
+    const count = document.getElementById('consumerStreamCount');
+    count.textContent = streamMessages.length;
+    
+    if (streamMessages.length === 0) {
+        container.innerHTML = '<span class="stream-empty">No messages in stream</span>';
+        return;
+    }
+    
+    container.innerHTML = streamMessages.map(m => {
+        let cls = 'stream-msg';
+        const minPos = Math.min(...Object.values(consumers).map(c => c.position).filter(p => p > 0), Infinity);
+        if (m.seq <= minPos && minPos !== Infinity) cls += ' acked';
+        return `<div class="${cls}">${m.seq}</div>`;
+    }).join('');
+}
+
+function renderConsumers() {
+    const area = document.getElementById('consumersArea');
+    const names = Object.keys(consumers);
+    
+    if (names.length === 0) {
+        area.innerHTML = '<div class="hint">No consumers yet. Create one below.</div>';
+        return;
+    }
+    
+    area.innerHTML = names.map(name => {
+        const c = consumers[name];
+        const pending = streamMessages.length - c.position;
+        return `
+            <div class="consumer-card ${c.active ? '' : 'inactive'}">
+                <div class="consumer-name">${name} ${c.type === 'ephemeral' ? '(eph)' : ''}</div>
+                <div class="consumer-position">pos: ${c.position}</div>
+                ${pending > 0 ? `<div class="consumer-pending">${pending} pending</div>` : ''}
+                <div class="consumer-actions">
+                    <button class="btn btn-secondary" onclick="consumerNext('${name}')">Next</button>
+                    <button class="btn btn-danger" onclick="deleteConsumer('${name}')" style="padding: 4px 8px;">X</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+document.getElementById('createConsumerBtn').addEventListener('click', () => {
+    const name = document.getElementById('consumerName').value.trim();
+    const type = document.getElementById('consumerType').value;
+    if (!name || consumers[name]) return;
+    
+    consumers[name] = { position: 0, type, active: true };
+    renderConsumers();
+    log('consumerLog', 'info', `Created ${type} consumer: ${name}`);
+});
+
+function consumerNext(name) {
+    const c = consumers[name];
+    if (c.position >= streamMessages.length) {
+        log('consumerLog', 'info', `${name}: No more messages`);
+        return;
+    }
+    c.position++;
+    const msg = streamMessages[c.position - 1];
+    renderConsumers();
+    syncConsumerStream();
+    log('consumerLog', 'consume', `${name}: Received seq=${msg.seq}, acked`);
+}
+
+function deleteConsumer(name) {
+    delete consumers[name];
+    renderConsumers();
+    syncConsumerStream();
+    log('consumerLog', 'info', `Deleted consumer: ${name}`);
+}
+
+document.getElementById('addStreamMsgsBtn').addEventListener('click', () => {
+    for (let i = 0; i < 3; i++) {
+        streamSeq++;
+        streamMessages.push({ seq: streamSeq, subject: 'orders.new', data: `{"id": ${streamSeq}}`, time: new Date().toLocaleTimeString() });
+    }
+    renderStreamMessages();
+    syncConsumerStream();
+    log('consumerLog', 'pub', `Added 3 messages to stream`);
+});
+
+// Acks Tab
+function renderAckMessages() {
+    const container = document.getElementById('ackStreamMessages');
+    if (ackMessages.length === 0) {
+        container.innerHTML = '<span class="stream-empty">Click "Add Messages" to populate</span>';
+        return;
+    }
+    container.innerHTML = ackMessages.map(m => 
+        `<div class="stream-msg ${m.status}">${m.seq}</div>`
+    ).join('');
+}
+
+document.getElementById('addAckMsgsBtn').addEventListener('click', () => {
+    for (let i = 0; i < 5; i++) {
+        ackSeq++;
+        ackMessages.push({ seq: ackSeq, status: 'pending' });
+    }
+    renderAckMessages();
+    log('ackLog', 'info', 'Added 5 messages to queue');
+});
+
+document.getElementById('clearAckMsgsBtn').addEventListener('click', () => {
+    ackMessages = [];
+    ackSeq = 0;
+    currentAckMsg = null;
+    updateAckUI(null);
+    renderAckMessages();
+    log('ackLog', 'info', 'Cleared all messages');
+});
+
+document.getElementById('fetchMsgBtn').addEventListener('click', () => {
+    const pending = ackMessages.find(m => m.status === 'pending');
+    if (!pending) {
+        log('ackLog', 'info', 'No pending messages');
+        return;
+    }
+    currentAckMsg = pending;
+    currentAckMsg.status = 'processing';
+    updateAckUI(currentAckMsg);
+    renderAckMessages();
+    log('ackLog', 'consume', `Fetched message seq=${currentAckMsg.seq}`);
+});
+
+function updateAckUI(msg) {
+    const box = document.getElementById('ackMessage');
+    const seq = document.getElementById('ackSeq');
+    const status = document.getElementById('ackStatus');
+    const btns = ['ackBtn', 'nakBtn', 'termBtn', 'inProgressBtn'];
+    
+    if (!msg) {
+        box.className = 'ack-message';
+        seq.textContent = '-';
+        status.textContent = 'No message fetched';
+        btns.forEach(id => document.getElementById(id).disabled = true);
+        return;
+    }
+    
+    seq.textContent = msg.seq;
+    if (msg.status === 'processing') {
+        box.className = 'ack-message processing';
+        status.textContent = 'Processing...';
+        btns.forEach(id => document.getElementById(id).disabled = false);
+    } else if (msg.status === 'acked') {
+        box.className = 'ack-message acked';
+        status.textContent = 'Acknowledged';
+        btns.forEach(id => document.getElementById(id).disabled = true);
+    } else if (msg.status === 'pending') {
+        box.className = 'ack-message';
+        status.textContent = 'Pending (will redeliver)';
+        btns.forEach(id => document.getElementById(id).disabled = true);
+    }
+}
+
+document.getElementById('ackBtn').addEventListener('click', () => {
+    if (!currentAckMsg) return;
+    currentAckMsg.status = 'acked';
+    updateAckUI(currentAckMsg);
+    renderAckMessages();
+    log('ackLog', 'ack', `ack() seq=${currentAckMsg.seq} - Success, moving on`);
+    currentAckMsg = null;
+});
+
+document.getElementById('nakBtn').addEventListener('click', () => {
+    if (!currentAckMsg) return;
+    currentAckMsg.status = 'pending';
+    updateAckUI(null);
+    renderAckMessages();
+    log('ackLog', 'nak', `nak() seq=${currentAckMsg.seq} - Will redeliver immediately`);
+    currentAckMsg = null;
+});
+
+document.getElementById('termBtn').addEventListener('click', () => {
+    if (!currentAckMsg) return;
+    const seq = currentAckMsg.seq;
+    ackMessages = ackMessages.filter(m => m.seq !== seq);
+    updateAckUI(null);
+    renderAckMessages();
+    log('ackLog', 'nak', `term() seq=${seq} - Permanent failure, removed`);
+    currentAckMsg = null;
+});
+
+document.getElementById('inProgressBtn').addEventListener('click', () => {
+    if (!currentAckMsg) return;
+    log('ackLog', 'info', `in_progress() seq=${currentAckMsg.seq} - Extended ack timeout`);
+});
+
+// Replay Tab
+const replayMessages = [];
+for (let i = 1; i <= 10; i++) {
+    replayMessages.push({ seq: i, time: `10:0${i}:00` });
+}
+
+function renderReplayStream() {
+    const container = document.getElementById('replayStreamMessages');
+    container.innerHTML = replayMessages.map(m => 
+        `<div class="stream-msg">${m.seq}</div>`
+    ).join('');
+}
+
+document.getElementById('replayPolicy').addEventListener('change', (e) => {
+    document.getElementById('replaySeq').style.display = e.target.value === 'seq' ? 'inline-block' : 'none';
+});
+
+document.getElementById('createReplayConsumerBtn').addEventListener('click', () => {
+    const policy = document.getElementById('replayPolicy').value;
+    const seqInput = parseInt(document.getElementById('replaySeq').value) || 1;
+    
+    let startSeq, msgs, desc;
+    switch (policy) {
+        case 'all':
+            startSeq = 1;
+            msgs = replayMessages;
+            desc = 'Replaying ALL messages from beginning';
+            break;
+        case 'last':
+            startSeq = 10;
+            msgs = [replayMessages[9]];
+            desc = 'Starting from LAST message only';
+            break;
+        case 'new':
+            startSeq = 11;
+            msgs = [];
+            desc = 'Waiting for NEW messages only (none yet)';
+            break;
+        case 'seq':
+            startSeq = Math.min(seqInput, 10);
+            msgs = replayMessages.slice(startSeq - 1);
+            desc = `Starting from sequence ${startSeq}`;
+            break;
+    }
+    
+    const result = document.getElementById('replayResult');
+    result.innerHTML = `
+        <div class="consumer-card" style="display: inline-block;">
+            <div class="consumer-name">replay-consumer</div>
+            <div class="consumer-position">start: seq ${startSeq}</div>
+            <div class="consumer-pending">${msgs.length} messages to deliver</div>
+        </div>
+        <div class="hint" style="margin-top: 10px;">${desc}</div>
+    `;
+    
+    log('replayLog', 'info', `Created consumer with ${policy} policy, will receive ${msgs.length} messages`);
+});
+
+renderReplayStream();
+
+// Dedup Tab
+document.getElementById('dedupPublishBtn').addEventListener('click', () => {
+    const msgId = document.getElementById('dedupMsgId').value;
+    const payload = document.getElementById('dedupPayload').value;
+    
+    if (dedupStore[msgId]) {
+        addDedupResult(msgId, dedupStore[msgId], true);
+        log('dedupLog', 'info', `Duplicate detected! Returning existing seq=${dedupStore[msgId]}`);
+    } else {
+        dedupSeq++;
+        dedupStore[msgId] = dedupSeq;
+        addDedupResult(msgId, dedupSeq, false);
+        log('dedupLog', 'pub', `New message stored: seq=${dedupSeq}, msgId=${msgId}`);
+    }
+});
+
+document.getElementById('dedupPublishAgainBtn').addEventListener('click', () => {
+    const msgId = document.getElementById('dedupMsgId').value;
+    if (dedupStore[msgId]) {
+        addDedupResult(msgId, dedupStore[msgId], true);
+        log('dedupLog', 'info', `Duplicate! Same seq=${dedupStore[msgId]} returned (no new message stored)`);
+    } else {
+        log('dedupLog', 'info', 'Message ID not found. Publish it first.');
+    }
+});
+
+function addDedupResult(msgId, seq, isDup) {
+    const container = document.getElementById('dedupResults');
+    const row = document.createElement('div');
+    row.className = 'dedup-row';
+    row.innerHTML = `
+        <span class="msg-id">${msgId}</span>
+        <span>seq: ${seq}</span>
+        <span class="result ${isDup ? 'dup' : 'new'}">${isDup ? 'DUPLICATE (no store)' : 'NEW (stored)'}</span>
+    `;
+    container.insertBefore(row, container.firstChild);
+}
+
+// Logging
+function log(logId, type, message) {
+    const logEl = document.getElementById(logId);
+    const time = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    entry.innerHTML = '<span class="log-time">' + time + '</span>' + message;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+    });
+});
+
+// Initialize
+renderStreamMessages();
+renderConsumers();
+renderAckMessages();
+</script>
+{% endblock %}
