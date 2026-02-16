@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Essays — i33ym{% endblock %}
+{% block title %}Essays – i33ym{% endblock %}
 
 {% block extra_css %}
 .article-list {
@@ -51,9 +52,54 @@
 .tag:hover {
     background: #e0e0e0;
 }
+
+.music-toggle {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #aaa;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 50px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.3s;
+}
+
+.music-toggle:hover {
+    color: #2c2c2c;
+}
+
+.music-toggle.playing {
+    color: #2c2c2c;
+}
+
+.music-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ccc;
+    transition: background 0.3s;
+}
+
+.music-toggle.playing .music-dot {
+    background: #2c2c2c;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
 {% endblock %}
 
 {% block content %}
+<div class="music-toggle" id="musicToggle">
+    <span class="music-dot"></span>
+    <span id="musicLabel">don't touch this</span>
+</div>
+<audio id="bgMusic" src="{% static 'music/favorite.mp3' %}" preload="metadata" loop></audio>
+
 <ul class="article-list">
     {% for article in articles %}
     <li class="article-item">
@@ -72,4 +118,28 @@
     <p>No essays yet.</p>
     {% endfor %}
 </ul>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const toggle = document.getElementById('musicToggle');
+    const label = document.getElementById('musicLabel');
+    const audio = document.getElementById('bgMusic');
+    let playing = false;
+
+    toggle.addEventListener('click', function() {
+        if (playing) {
+            audio.pause();
+            toggle.classList.remove('playing');
+            label.textContent = "don't touch this";
+        } else {
+            audio.play();
+            toggle.classList.add('playing');
+            label.textContent = 'told you...';
+        }
+        playing = !playing;
+    });
+})();
+</script>
 {% endblock %}

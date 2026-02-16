@@ -159,4 +159,5 @@ TINYMCE_DEFAULT_CONFIG = {
     "extended_valid_elements": "pre[*],code[*]",
     "preserve_newlines": True,
     "forced_root_block": "",
+    'init_instance_callback': 'function(editor) { window.dispatchEvent(new Event("resize")); }',
 }

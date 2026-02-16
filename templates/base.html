@@ -98,7 +98,7 @@
             </nav>
         </header>
 
-        <main>
+        <main id="main-content">
             {% block content %}{% endblock %}
         </main>
 
@@ -106,5 +106,7 @@
             <p>&copy; 2025 i33ym. All rights reserved.</p>
         </footer>
     </div>
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

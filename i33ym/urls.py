@@ -29,6 +29,7 @@ urlpatterns = [
     path("slides-nats-jetstream/", TemplateView.as_view(template_name="slides-nats-jetstream.html"), name="slides-nats-jetstream"),
     path("slides-nats-advanced/", TemplateView.as_view(template_name="slides-nats-advanced.html"), name="slides-nats-advanced"),
     path("slides-nats-production/", TemplateView.as_view(template_name="slides-nats-production.html"), name="slides-nats-production"),
+    path("slides-security/", TemplateView.as_view(template_name="slides-security.html"), name="slides-security"),
     path("", include("apps.articles.urls")),
 ]
 
