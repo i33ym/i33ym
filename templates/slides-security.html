@@ -10,11 +10,13 @@
 </section>
 
 <section>
-    <h2>Right Now, a Bot Is Trying</h2>
-    <p><code>ssh root@your-server</code></p>
-    <p>password: <code>admin</code></p>
-    <br>
+    <h2>Right Now</h2>
+    <p>A bot is trying:</p>
+    <pre><code>ssh root@your-server
+password: admin</code></pre>
     <p>This started 45 seconds after your IP was assigned.</p>
+    <br>
+    <p>It will not stop. Ever.</p>
 </section>
 
 <section>
@@ -22,11 +24,14 @@
     <p>Server → Docker → Network → Application → Authorization → Secrets → Dependencies → Monitoring</p>
     <br>
     <p>Each layer assumes the one above already failed.</p>
+    <br>
+    <p>Like an onion. Except each layer says "no."</p>
 </section>
 
 <!-- SERVER -->
 <section>
     <h2>🔒 The Server Layer</h2>
+    <p>(lock the door before buying a camera system)</p>
 </section>
 
 <section>
@@ -36,65 +41,103 @@ PasswordAuthentication no
 PubkeyAuthentication yes
 AllowUsers deploy
 MaxAuthTries 3</code></pre>
-    <p>+ fail2ban = bots get banned in 3 tries</p>
+    <p>+ fail2ban = three strikes, banned for an hour</p>
+    <p>Changing the port to 2222? That's hiding the key under a different rock.</p>
 </section>
 
 <section>
-    <h2>Least Privilege</h2>
-    <pre><code># Not this
-deploy ALL=(ALL) NOPASSWD: ALL
-
-# This
-deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart myapp</code></pre>
-    <p><code>chmod 600</code> your secrets. "Only I use this server" is famous last words.</p>
+    <h2>Famous Last Words</h2>
+    <p>"I'm the only one on this server."</p>
+    <p>"Permissions don't matter."</p>
+    <p>"We don't need tests for this."</p>
+    <br>
+    <pre><code>chmod 600 ~/.age-key.txt
+chmod 700 ~/.ssh</code></pre>
+    <p>Least privilege is boring. Boring keeps your data.</p>
 </section>
 
 <section>
-    <h2>Firewall: Default No</h2>
+    <h2>Firewall: Be Rude</h2>
     <pre><code>ufw default deny incoming
 ufw allow 22/tcp
 ufw allow 443/tcp
 ufw allow 80/tcp</code></pre>
-    <p>If Postgres doesn't need internet access, don't open 5432. Be rude.</p>
+    <p>Postgres on the internet? Redis on the internet?</p>
+    <p>Please don't. I've seen the ransom notes.</p>
+</section>
+
+<section>
+    <h2>Updates: The Boring Hero</h2>
+    <pre><code>sudo apt install unattended-upgrades</code></pre>
+    <p>Most breaches exploit known bugs with patches already available.</p>
+    <p>The attacker didn't find a zero-day.<br>The admin didn't run apt upgrade.</p>
 </section>
 
 <!-- DOCKER -->
 <section>
     <h2>🐳 Docker Security</h2>
+    <p>(it's not a VM, stop treating it like one)</p>
 </section>
 
 <section>
     <h2>Containers Run as Root by Default</h2>
     <p>Let that sink in.</p>
     <br>
-    <pre><code>USER app  # add this to your Dockerfile</code></pre>
-    <p>Two words. Problem solved.</p>
+    <pre><code>USER app  # in your Dockerfile</code></pre>
+    <p>Two words. Container now runs as nobody.</p>
+    <p>Four extra lines in your Dockerfile. Saves your career.</p>
 </section>
 
 <section>
-    <h2>The Docker Group Is Root in Disguise</h2>
+    <h2>The Docker Group</h2>
     <pre><code>docker run -v /:/host -it alpine sh
-cat /host/etc/shadow   # full host access</code></pre>
+cat /host/etc/shadow</code></pre>
+    <p>Full host access. Root with a fake mustache.</p>
+    <br>
     <p>Use rootless Docker or Podman instead.</p>
+</section>
+
+<section>
+    <h2>The Padded Room</h2>
+    <pre><code>docker run \
+  --read-only \
+  --tmpfs /tmp \
+  --memory=512m \
+  --cpus=1.0 \
+  --pids-limit=100 \
+  --security-opt=no-new-privileges \
+  myapp</code></pre>
+    <p>Attacker is stuck in a box with no pen.</p>
 </section>
 
 <!-- NETWORK -->
 <section>
     <h2>🌐 Network Layer</h2>
+    <p>(encrypt everything, hide what you can)</p>
 </section>
 
 <section>
-    <h2>Make SSH Invisible</h2>
-    <pre><code># Tailscale/WireGuard VPN, then:
+    <h2>TLS: Not Negotiable</h2>
+    <p>It's 2026. It's free. There are zero excuses.</p>
+    <pre><code>sudo certbot --nginx -d yourdomain.com</code></pre>
+    <p>"But it's on a private network!"</p>
+    <p>Networks get misconfigured. Encrypt it anyway.</p>
+</section>
+
+<section>
+    <h2>Make SSH Invisible ✨</h2>
+    <pre><code># Tailscale/WireGuard, then:
 ufw allow from 100.64.0.0/10 to any port 22
 ufw deny 22</code></pre>
     <p>Port scanners find nothing. Bots go home confused.</p>
+    <p>Auth.log goes from 10,000 failures/day to zero.</p>
+    <p>Best day of your sysadmin life.</p>
 </section>
 
 <!-- APPLICATION -->
 <section>
     <h2>💻 Application Layer</h2>
-    <p>(where the real fun begins)</p>
+    <p>(where the real disasters happen)</p>
 </section>
 
 <section>
@@ -103,41 +146,75 @@ ufw deny 22</code></pre>
     name: str = Field(min_length=1, max_length=100)
     email: EmailStr
     age: int = Field(ge=13, le=150)</code></pre>
-    <p>Server-side validation. Client-side is decoration.</p>
+    <p>Client-side validation is decoration.</p>
+    <p>Attackers don't use your form. They use curl.</p>
 </section>
 
 <section>
-    <h2>SQL Injection: Still Happening in 2026</h2>
-    <pre><code># 😱
+    <h2>SQL Injection: Still in 2026</h2>
+    <pre><code># 😱 How to ruin your week
 f"SELECT * FROM users WHERE name = '{user_input}'"
 
-# 😌
+# 😌 How to not
 cursor.execute("...WHERE name = %s", (user_input,))</code></pre>
+    <p>It's like still having polio. We have the vaccine.</p>
 </section>
 
 <section>
     <h2>XSS</h2>
     <p>User submits: <code>&lt;script&gt;stealCookies()&lt;/script&gt;</code></p>
-    <p>Your template renders it. Everyone's session is gone.</p>
+    <p>Your template renders it. Session tokens gone.</p>
     <br>
-    <p>Jinja2 auto-escapes. Never use <code>| safe</code> on user content.</p>
+    <p>Jinja2 auto-escapes. But <code>{{ data | safe }}</code>?</p>
+    <p>You just lied to your template engine.</p>
 </section>
 
 <section>
-    <h2>Auth Checklist</h2>
-    <p>✅ argon2/bcrypt (slow = good)</p>
-    <p>✅ HttpOnly + Secure + SameSite cookies</p>
-    <p>✅ JWTs in cookies, never localStorage</p>
-    <p>✅ Rate limit login: 5/min/IP</p>
+    <h2>CSRF</h2>
+    <p>User visits funny cat website.</p>
+    <p>Cat website submits a hidden form to your bank app.</p>
+    <p>Browser attaches the session cookie.</p>
+    <p>Money transferred. Via a cat website.</p>
+    <br>
+    <p>SameSite cookies. Django CSRF middleware. Use them.</p>
+</section>
+
+<section>
+    <h2>Passwords: Slow Is Good</h2>
+    <p>SHA-256: billions of hashes/second (bad for passwords)</p>
+    <p>argon2: ~100ms per hash (bad for attackers)</p>
+    <br>
+    <p>Brute force time: 1 hour → 3,170 years</p>
+    <br>
+    <pre><code>CryptContext(schemes=["argon2"])</code></pre>
+</section>
+
+<section>
+    <h2>JWTs: Not in localStorage</h2>
+    <p>localStorage is readable by any script on the page.</p>
+    <p>Any XSS = every user's token stolen.</p>
+    <br>
+    <p>HttpOnly cookies. Always.</p>
+    <p>It's like storing your house key in a glass box on the porch.</p>
+</section>
+
+<section>
+    <h2>Rate Limiting</h2>
+    <pre><code>limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;</code></pre>
+    <p>5 attempts/min/IP. Kills brute-force dead.</p>
+    <br>
+    <p>Rate limit: login, signup, password reset, expensive endpoints.</p>
+    <p>If a user hits your API 1000 times/min, they're probably not a user.</p>
 </section>
 
 <section>
     <h2>Security Headers: Free Armor</h2>
     <pre><code>Content-Security-Policy: default-src 'self'
 Strict-Transport-Security: max-age=31536000
-X-Frame-Options: DENY
-X-Content-Type-Options: nosniff</code></pre>
-    <p>Six lines of Nginx config. Blocks entire attack classes.</p>
+X-Frame-Options: DENY</code></pre>
+    <p>CSP blocks injected scripts. HSTS forces HTTPS forever.</p>
+    <p>Someone left a suit of armor on the ground labeled "FREE."</p>
+    <p>Most people walk past it.</p>
 </section>
 
 <!-- AUTHORIZATION -->
@@ -147,42 +224,46 @@ X-Content-Type-Options: nosniff</code></pre>
 </section>
 
 <section>
-    <h2>The Broken Pattern</h2>
-    <pre><code>if user.role == "admin":
-    allow()
-elif user.role == "editor" and resource.owner == user.id:
-    allow()
-# ... 40 endpoints later, nobody knows who can do what</code></pre>
+    <h2>Week 1 vs Week 12</h2>
+    <pre><code># Week 1: beautiful
+if user.is_admin: allow()
+
+# Week 12: crying
+if user.role == "editor" and resource.team_id == user.team_id:
+    if resource.is_shared or user.has_permission("can_approve"):
+        if action == "approve" and resource.fiscal_year == ...
+# ... spread across 40 endpoints</code></pre>
 </section>
 
 <section>
     <h2>Fine-Grained Authorization</h2>
-    <pre><code># OpenFGA model
+    <pre><code># OpenFGA model — one source of truth
 type document
   relations
     define owner: [user]
-    define editor: [user] or owner
-    define viewer: [user] or editor</code></pre>
-    <p>One model. Query from anywhere. No scattered if-statements.</p>
-</section>
-
-<section>
-    <h2>Check Permissions, Not Roles</h2>
-    <pre><code># Can john edit this?
-check(user="user:john",
-      relation="editor",
-      object="document:security-essay")
-# → false</code></pre>
+    define editor: [user, team#member] or owner
+    define viewer: [user, team#member] or editor</code></pre>
     <p>Adding a role = model change, not a 40-file code change.</p>
 </section>
 
 <section>
-    <h2>IDOR: The Dumb Bug</h2>
-    <p>User hits <code>/api/invoices/42</code></p>
-    <p>Changes to <code>/api/invoices/43</code></p>
-    <p>Is that their invoice? Did you check?</p>
+    <h2>One Call. Any Endpoint.</h2>
+    <pre><code># Can sara edit this?
+check(user="user:sara",
+      relation="editor",
+      object="document:security-essay")
+# → true (she's on the team)</code></pre>
+    <p>"Who can access this?" → query the model, not grep the codebase.</p>
+</section>
+
+<section>
+    <h2>IDOR: The World's Dumbest Bug</h2>
+    <p><code>/api/invoices/42</code> → your invoice</p>
+    <p><code>/api/invoices/43</code> → someone else's invoice</p>
     <br>
-    <p>Every ID-based endpoint needs ownership verification.</p>
+    <p>Did you check? Or did you just check "is user logged in"?</p>
+    <br>
+    <p>FGA: one <code>check()</code> per request. Put it in middleware. Done.</p>
 </section>
 
 <section>
@@ -191,35 +272,59 @@ check(user="user:john",
 
 CREATE POLICY docs_owner ON documents
     USING (owner_id = current_setting('app.user_id')::int);</code></pre>
-    <p>Even if your app has a bug, the database won't leak rows.</p>
+    <p>App has a bug? Database still won't leak rows.</p>
+    <p>Defense in depth at the query planner level.</p>
 </section>
 
-<!-- REST -->
+<section>
+    <h2>CORS: Not Access-Control-Allow-Origin: *</h2>
+    <p>That lets any website make authenticated requests to your API.</p>
+    <p>Including the funny cat website.</p>
+    <br>
+    <p>Whitelist your own domains. Nobody else.</p>
+</section>
+
+<!-- SECRETS, DEPS, MONITORING -->
 <section>
     <h2>🔐 Secrets</h2>
-    <p><strong>L1:</strong> sops + age (encrypt in repo)</p>
-    <p><strong>L2:</strong> GCP Secret Manager (never on disk)</p>
+    <p><strong>L1:</strong> sops + age (encrypt in repo, decrypt at deploy)</p>
+    <p><strong>L2:</strong> GCP Secret Manager (never touches disk)</p>
     <p><strong>L3:</strong> Vault (short-lived, auto-rotating)</p>
     <br>
     <p>None protect a fully compromised runtime.</p>
+    <p>That's what the other 9 sections are for.</p>
 </section>
 
 <section>
     <h2>📦 Dependencies</h2>
-    <p>90% of your app is someone else's code.</p>
+    <p>Bedtime stories:</p>
     <br>
-    <p>event-stream (2018): stolen Bitcoin wallets</p>
-    <p>colors/faker (2022): self-sabotage</p>
+    <p><strong>event-stream (2018):</strong> new maintainer stole Bitcoin keys</p>
+    <p><strong>colors/faker (2022):</strong> author self-sabotaged in protest</p>
+    <p><strong>ua-parser-js (2021):</strong> hijacked, crypto miner injected. 7M weekly downloads.</p>
     <br>
-    <p>Pin versions. Commit lockfiles. Audit regularly.</p>
+    <p>Pin versions. Commit lockfiles. Trust nobody.</p>
 </section>
 
 <section>
     <h2>👁️ Monitoring</h2>
-    <p>"Hope" is not a security strategy.</p>
+    <p>"Hope" is not an incident response plan.</p>
     <br>
-    <p>Ship logs off-server. Alert on anomalies.</p>
-    <p>Have an incident playbook: isolate → preserve → rotate → patch → restore.</p>
+    <p>Ship logs off the box. Attackers clean local logs first.</p>
+    <p>Alert on: new IPs, CPU spikes at 3 AM, unknown users.</p>
+    <br>
+    <p>Crypto miners love the night shift.</p>
+</section>
+
+<section>
+    <h2>Incident Playbook</h2>
+    <p>1. Isolate (don't shutdown — you need memory for forensics)</p>
+    <p>2. Preserve evidence</p>
+    <p>3. Rotate ALL credentials</p>
+    <p>4. Find the entry point</p>
+    <p>5. Patch it</p>
+    <p>6. Restore from clean state</p>
+    <p>7. Watch closely for 30 days. They come back.</p>
 </section>
 
 <section>
@@ -227,18 +332,23 @@ CREATE POLICY docs_owner ON documents
     <p>Every layer assumes the one above already failed.</p>
     <br>
     <p>The goal: make attacks expensive enough that the attacker goes to bother someone with an open MongoDB on port 27017.</p>
+    <br>
+    <p>(There are thousands. I wish I was joking.)</p>
 </section>
 
 <section>
-    <h2>One Last Thing</h2>
-    <p>Security is not a product.</p>
+    <h2>Security Is Not a Product</h2>
     <p>It's a practice.</p>
+    <p>Like testing. Like code review.</p>
+    <p>Like not deploying on Fridays.</p>
     <br>
-    <p>Like testing, like code review, like not deploying on Fridays.</p>
+    <p>Actually, deploy whenever you want.</p>
+    <p>Just make sure your SSH isn't <code>root:password123</code> first.</p>
 </section>
 
 <section>
     <h1>Questions?</h1>
-    <p class="meta" style="margin-top: 3em;">i33ym.cc</p>
+    <p style="margin-top: 1em;">Or security horror stories. I collect those.</p>
+    <p class="meta" style="margin-top: 2em;">i33ym.cc</p>
 </section>
 {% endblock %}
